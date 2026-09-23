@@ -57,7 +57,7 @@ function offset(lon: number, lat: number, eastKm: number, northKm: number): LonL
   return { lon: lon + eastKm / (111.32 * Math.max(Math.cos((lat * Math.PI) / 180), 0.2)), lat: lat + northKm / 110.57 };
 }
 
-function mockSarImage(slickId: string, rings: number[][][]): MapImage | undefined {
+export function mockSarImage(slickId: string, rings: number[][][]): MapImage | undefined {
   if (typeof document === 'undefined' || rings.length === 0) return undefined;
   const points = rings.flat();
   const west = Math.min(...points.map(([lon]) => lon));
@@ -109,8 +109,8 @@ function mockSarImage(slickId: string, rings: number[][][]): MapImage | undefine
 }
 
 export function DetectionStage({ slick, incident, incidentId, detectionPanel }: StageProps) {
-  const [viewMode, setViewMode] = useState<'source' | 'map'>('source');
-  useEffect(() => setViewMode('source'), [slick.id]);
+  const [viewMode, setViewMode] = useState<'source' | 'map'>(detectionPanel === 'vessels' ? 'map' : 'source');
+  useEffect(() => setViewMode(detectionPanel === 'vessels' ? 'map' : 'source'), [slick.id, detectionPanel]);
   const detection = useArtifact<Detection>(incidentId, fetchDetection);
   const bundled = detection && detection !== 'error' ? detection.sarImagery : undefined;
   const sceneId = typeof slick.properties.scene === 'string' ? slick.properties.scene : undefined;

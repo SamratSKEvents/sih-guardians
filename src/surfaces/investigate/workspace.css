@@ -198,7 +198,7 @@
 /* ---------------------------------------------------------------- the grip */
 
 .ws-grip {
-  width: var(--space-2);
+  width: 6px;
   border-left: 1px solid var(--line);
   background: var(--panel);
   cursor: col-resize;
@@ -1288,3 +1288,32 @@
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* Detection's Map and Provenance pages: no section rail, a 40 % detail column. */
+.ws-split-flat {
+  grid-template-columns: minmax(0, 1fr) auto var(--rail-w, 40%);
+}
+.ws-split-flat .ws-rail-body { padding: var(--space-5); }
+
+/* The three Detection pages, switched from the head. */
+.ws-pages {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-control);
+  background: var(--panel-sunken);
+}
+.ws-pages button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 28px;
+  padding: 0 var(--space-5);
+  border-radius: 6px;
+  color: var(--ink-secondary);
+  font: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+.ws-pages button:hover { color: var(--ink); }
+.ws-pages button[aria-pressed='true'] { background: var(--panel); color: var(--ink); font-weight: 600; box-shadow: var(--shadow-chip); }
