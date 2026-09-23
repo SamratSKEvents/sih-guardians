@@ -1,0 +1,150 @@
+/*
+ * The filter rail. A full-height column docked to the left edge of the map,
+ * not a floating card: it is persistent furniture, and floating it would put
+ * a shadow between the operator and the chart all day.
+ */
+
+.fr {
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  min-height: 0;
+  border-right: 1px solid var(--line);
+  background: var(--panel);
+}
+
+/* ===================================================================== head */
+
+.fr-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-6) var(--space-5);
+  border-bottom: 1px solid var(--line);
+}
+
+.fr-head h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* How many filters are actually excluding something. Present whether the rail
+ * is open or shut, because a hidden filter quietly removing half the catalog
+ * is the worst thing this panel can do. */
+.fr-count {
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--space-3);
+  border-radius: 99px;
+  background: var(--accent-pill);
+  color: var(--accent-ink);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
+.fr-close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  border-radius: var(--radius-control);
+  color: var(--ink-muted);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.fr-close:hover {
+  background: var(--panel-hover);
+  color: var(--ink);
+}
+
+/* ===================================================================== body */
+
+.fr-body {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-6);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.fr-body > .ds-advanced-plain > .ds-advanced-body {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.fr-checks {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0 calc(var(--space-4) * -1);
+}
+
+/* Indented and ruled, so it reads as narrowing the row above rather than as a
+ * fourth sibling option. */
+.fr-nested {
+  margin-left: var(--space-7);
+  padding-left: var(--space-5);
+  border-left: 1px solid var(--line);
+}
+
+/* ================================================================== closed */
+
+.fr-closed {
+  align-items: center;
+  width: 52px;
+  padding: var(--space-5) 0;
+  gap: var(--space-5);
+}
+
+.fr-open {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-control);
+  background: var(--panel-hover);
+  color: var(--ink-secondary);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.fr-open:hover {
+  background: var(--accent-wash);
+  color: var(--accent-ink);
+}
+
+.fr-open .fr-count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 17px;
+  height: 17px;
+  background: var(--accent);
+  color: var(--action-ink);
+  box-shadow: 0 0 0 2px var(--panel);
+}
+
+/* ================================================================ responsive */
+
+@media (max-width: 900px) {
+  .fr,
+  .fr-closed {
+    width: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .fr-body {
+    max-height: 360px;
+  }
+  .fr-closed {
+    flex-direction: row;
+    padding: var(--space-4) var(--space-5);
+  }
+}

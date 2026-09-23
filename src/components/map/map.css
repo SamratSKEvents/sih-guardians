@@ -1,0 +1,333 @@
+/*
+ * The globe and the furniture that sits on it.
+ *
+ * Rewritten onto the design system in `src/design/`. The old file predated it
+ * and carried its own language: 4px corners, an achromatic `--surface-glass`
+ * with a backdrop blur, hand-rolled segmented and toggle controls, and three
+ * literal `oklch(...)` values. All of that is gone.
+ *
+ * The system's rule for things on a chart, which the library already answers
+ * twice over:
+ *
+ *   - A small readout that is continuously true of the view is a CHIP:
+ *     `--map-chip` ground, `--map-ink`, an 8px corner. `MapStatusBar` and
+ *     `MapLabel` are these.
+ *   - A panel you operate is a PANEL, floated: `--panel-raised`,
+ *     `--shadow-panel`, `--radius-panel`. `MapLegend` is this, and the map
+ *     style panel and the two detail cards below follow it exactly rather
+ *     than inventing a third surface.
+ *
+ * The controls inside them are the library's own (`Segmented`, `Toggle`,
+ * `Slider`, `Select`, `Button`), so this file positions things and styles
+ * nothing that the library already styles.
+ */
+
+.earth-map {
+  position: relative;
+  min-height: 0;
+  /* Dark in both modes: the imagery has no light variant, so a light ground
+   * would flash white in the gap before tiles land. */
+  background: var(--map-ground);
+}
+
+.earth-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+/* ------------------------------------------------- floated map furniture --- */
+
+/*
+ * One treatment for every panel that floats on the chart, matching
+ * `MapLegend` exactly. Position is set per-panel below; nothing else is.
+ */
+.earth-projection,
+.earth-style-open,
+.earth-panel {
+  position: absolute;
+  z-index: var(--z-panel);
+  border-radius: var(--radius-panel);
+  background: var(--panel-raised);
+  box-shadow: var(--shadow-panel);
+}
+
+/* Projection switch. The control is the library's Segmented; this only
+ * places it and gives it the floated panel's ground. */
+.earth-projection {
+  top: var(--space-6);
+  right: var(--space-6);
+  padding: var(--space-2);
+}
+
+/* The panel's trigger stands where the panel's own corner is, so opening it
+ * grows from the same place rather than appearing somewhere else. */
+.earth-style-open {
+  top: 64px;
+  right: var(--space-6);
+  padding: var(--space-2);
+}
+
+.earth-panel {
+  top: 64px;
+  right: var(--space-6);
+  width: 248px;
+  max-height: calc(100% - 64px - var(--space-6) - 56px);
+  overflow: auto;
+  padding: var(--space-3) var(--space-5) var(--space-5);
+}
+
+.earth-panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.earth-panel-head > .ds-icon-button {
+  margin-left: auto;
+}
+
+.earth-panel h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+/* The adjustment sliders stack; the reset closes the group. */
+.earth-adjustments {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+
+.earth-reset {
+  margin-top: var(--space-5);
+  width: 100%;
+}
+
+/*
+ * Attribution, inside the map style panel beneath the basemap picker.
+ *
+ * It used to be a chip floating on the chart. It is off the map now, but it
+ * cannot be deleted: EOX's Sentinel-2 tiles are CC BY-NC-SA and NASA GIBS
+ * asks for credit, so this notice is a condition of using them.
+ */
+.earth-credit {
+  margin: var(--space-5) 0 0;
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--line-soft);
+  color: var(--ink-muted);
+  font-size: var(--text-3xs);
+  line-height: 1.45;
+}
+
+/* ------------------------------------------ selected vessel and its dim --- */
+
+.entity-dim {
+  position: absolute;
+  z-index: var(--z-map-label);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/*
+ * The vessel detail card. Same floated-panel treatment as everything else on
+ * the chart, so a selection does not introduce a fourth surface.
+ */
+.entity-focus {
+  position: absolute;
+  z-index: var(--z-popover);
+  width: 236px;
+  padding: var(--space-6);
+  border-radius: var(--radius-panel);
+  background: var(--panel-raised);
+  box-shadow: var(--shadow-pop);
+  transform: translateY(-50%);
+}
+
+.entity-focus::before {
+  position: absolute;
+  top: 50%;
+  left: -6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--panel-raised);
+  content: '';
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.entity-focus > button {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-control);
+  color: var(--ink-muted);
+  font-size: var(--text-lg);
+  line-height: 1;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.entity-focus > button:hover {
+  color: var(--ink);
+  background: var(--panel-hover);
+}
+
+/* Tracked, not urgent: the watch hue, which is what this colour means
+ * everywhere else in the system. */
+.entity-focus > p {
+  margin: 0 0 var(--space-2);
+  color: var(--watch-ink);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+}
+
+.entity-focus h2 {
+  margin: 0;
+  padding-right: var(--space-7);
+  color: var(--ink);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.entity-focus dl {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.entity-focus dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-6);
+  font-size: var(--text-xs);
+}
+
+.entity-focus dt {
+  color: var(--ink-muted);
+}
+
+/* Coordinates and MMSI are read character by character, so they are mono. */
+.entity-focus dd {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------- selected slick card --- */
+
+/*
+ * Position only. The surface, the header, the close button and the fields all
+ * come from the library's float `Panel`; anything styled here that the panel
+ * already styles would be the second implementation this file just lost.
+ *
+ * 300px rather than 288: the field list stacks its label under its value
+ * below a 292px container, and a two-column field keeps the card short enough
+ * to leave the chart visible.
+ */
+.slick-card {
+  position: absolute;
+  z-index: var(--z-popover);
+  width: 300px;
+}
+
+/* The beak: a square of the panel's own ground rotated into a point, sitting
+ * on the edge that faces the slick, at the point along that edge where the
+ * slick actually is. Drawn behind the panel so the panel's ground covers the
+ * two sides that would otherwise show as a seam.
+ *
+ * `--beak` is the distance along the bearing edge; which edge that is comes
+ * from `data-side`, which says where the card sits relative to the slick. */
+.slick-card::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--panel-raised);
+  box-shadow: var(--shadow-panel);
+}
+
+/* Card to the right of the slick: the beak is on its left edge. */
+.slick-card[data-side='right']::before {
+  top: var(--beak, 23px);
+  left: 1px;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.slick-card[data-side='left']::before {
+  top: var(--beak, 23px);
+  right: 1px;
+  transform: translate(50%, -50%) rotate(45deg);
+}
+
+.slick-card[data-side='bottom']::before {
+  top: 1px;
+  left: var(--beak, 23px);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.slick-card[data-side='top']::before {
+  bottom: 1px;
+  left: var(--beak, 23px);
+  transform: translate(-50%, 50%) rotate(45deg);
+}
+
+.slick-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* The card's one action, so it takes the footer's width. */
+.slick-card-open {
+  gap: var(--space-3);
+  width: 100%;
+}
+
+/* On a phone the style panel takes the width rather than floating in a
+ * corner. The slick card stays anchored: it is pinned to a thing on the map,
+ * and 300px fits a phone. */
+@media (max-width: 700px) {
+  .earth-panel {
+    right: var(--space-5);
+    left: var(--space-5);
+    width: auto;
+  }
+}
+
+/*
+ * The load-bearing rules from cesium/Widgets/widgets.css.
+ *
+ * That file is 1342 lines styling the timeline, animation dial, geocoder,
+ * infobox and base layer picker, every one of which is disabled here. These
+ * are the only rules the bare canvas needs.
+ */
+.cesium-viewer,
+.cesium-viewer-cesiumWidgetContainer,
+.cesium-widget,
+.cesium-widget canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.cesium-viewer,
+.cesium-widget {
+  position: relative;
+  display: block;
+  overflow: hidden;
+}
+
+.cesium-widget canvas {
+  touch-action: none;
+}

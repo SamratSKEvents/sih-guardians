@@ -1,0 +1,348 @@
+/*
+ * GUARDIANS design tokens.
+ *
+ * The palette is sampled pixel by pixel from the PlainGIS reference, not
+ * approximated. Where a value below carries a "sampled" comment, that hex came
+ * straight out of the image.
+ *
+ * Two deliberate departures from it:
+ *
+ * 1. The page ground is WHITE, not the reference's mint (#d9eed9). Asked for.
+ *    Because the page is white rather than tinted, the reference's warm panel
+ *    cream (#f9f5f2) moves down one step: it becomes the recessed tone, used
+ *    for grouped and nested areas, and panels themselves are white. The tonal
+ *    ORDER of the reference is preserved, just shifted.
+ * 2. Text colours are darkened where the reference falls below WCAG AA. Its
+ *    green link measures about 2.6:1 on cream, which is fine in a mockup and
+ *    not fine in a console someone works in. The hue is kept; the lightness
+ *    is not.
+ */
+
+:root {
+  /* --- Surfaces ---------------------------------------------------------- */
+  --page: #ffffff;
+  --panel: #ffffff;
+  --panel-raised: #ffffff;
+  /* The reference's panel cream, now the recessed tone. This one colour is
+   * doing most of the warmth in the whole design. */
+  --panel-sunken: #f9f5f2; /* sampled */
+  --panel-hover: #f4efe9;
+
+  --line: #e6e0da;
+  --line-soft: #efeae5;
+  --line-strong: #dadada; /* sampled: the input border */
+
+  /* --- Ink --------------------------------------------------------------- */
+  /* Warm near-black, pulled toward the reference's dark pill rather than a
+   * neutral grey, so text belongs to the same family as everything else. */
+  --ink: #1d2422;
+  --ink-secondary: #5e5e5e; /* sampled */
+  /* Measured on --panel, not assumed: 5.1:1. The previous value was 3.73
+   * and failed AA for the body text this token actually carries. */
+  --ink-muted: #6f6d69;
+  --ink-faint: #acaead; /* sampled; non-text only */
+  --ink-inverse: #ffffff;
+
+  /* --- Map --------------------------------------------------------------- */
+  /* The reference does NOT darken its imagery. It runs full-colour aerial and
+   * puts dark pills on top, which is most of why it looks alive rather than
+   * switched off. Same here.
+   *
+   * The chart ground stays dark in BOTH modes, unlike every other surface.
+   * A map label has to be legible over satellite imagery, which has no light
+   * variant, so the label is a dark chip; a synthetic chart that went light
+   * would then need a second label treatment, and the system would be back to
+   * two languages. One ground, one chip, both modes. */
+  --map-ground: #2c3b34;
+  --map-ink: #ffffff;
+  --map-ink-muted: rgb(255 255 255 / 0.62); /* labels on a map chip */
+  /* Status on a map chip.
+   *
+   * The chip ground is dark in both modes, so these are the one set of status
+   * colours in the system that must NOT invert: they are the dark-mode inks
+   * in light mode too.
+   *
+   * They exist because the vivid hue cannot carry 11px text. `--critical` sits
+   * at mid lightness and measures 4.0:1 against white AND 4.0:1 against near
+   * black, so a solid-hue pill with text on it fails whichever way you push
+   * the text. `--watch` on white is 2.2:1. The fix is not a better text
+   * colour, it is not putting small text on the vivid hue at all: light ink
+   * on the chip's own ground, like every other status chip in the system. */
+  --map-critical-ink: #ff8f95;
+  --map-warning-ink: #f0d27c;
+  --map-watch-ink: #8ad6f4;
+  --map-clear-ink: #8ce791;
+  --map-inactive-ink: #b0b0b0;
+  --map-status-wash: rgb(255 255 255 / 0.1);
+
+  --map-chip: #1c2c30; /* sampled: the "Forest plot #32" tooltip */
+  --map-chip-raised: #263539; /* sampled: the value tooltip */
+  --map-chip-line: rgb(255 255 255 / 0.14);
+
+  /* --- Series ------------------------------------------------------------ */
+  /*
+   * ONE ramp for the whole system, in both modes. These are the Dispatch
+   * board's status bars, which is the most confident colour in any of the
+   * references: five hues that are unmistakable from each other at a glance
+   * and still agree as a set.
+   *
+   * Dark mode uses them exactly. This light mode uses the same HUES; where a
+   * value has to carry text it is darkened until it passes AA, because a
+   * colour that is gorgeous and unreadable is just unreadable.
+   */
+  --series-1: #4bd452; /* green  */
+  --series-2: #e6be42; /* yellow */
+  --series-3: #46bcea; /* blue   */
+  --series-4: #57e1e4; /* teal   */
+  --series-5: #e3464d; /* red    */
+
+  /* --- Status ------------------------------------------------------------ */
+  /* Built from that same ramp and the reference's own chips, so status and
+   * charts share one palette instead of being two that nearly match.
+   * `-wash` is the chip fill, `-ink` the text on it at AA or better. */
+  --critical: #e3464d; /* series red */
+  --critical-wash: #fde7e8;
+  --critical-ink: #b81f27;
+
+  --warning: #e6be42; /* series yellow */
+  --warning-wash: #fdf3d8;
+  --warning-ink: #8a6404;
+
+  --watch: #46bcea; /* series blue */
+  --watch-wash: #e0f3fc;
+  --watch-ink: #12678c;
+
+  --clear: #4bd452; /* series green */
+  --clear-wash: #ddf7df;
+  --clear-ink: #136b1f;
+
+  --inactive: #868481;
+  --inactive-wash: #f0ece8;
+  --inactive-ink: #5e5e5e;
+
+  /* --- Data -------------------------------------------------------------- */
+  /* Oak from the reference donut, which lands almost exactly on SkyTruth
+   * Cerulean's slick orange that the backend tiles already assume. */
+  --slick: #ff802c;
+  --slick-fill: rgb(255 128 44 / 0.4);
+  --slick-bar: #de9454; /* sampled: the orange bar */
+  --slick-ink: #b05c12;
+
+  /* --- Accent ------------------------------------------------------------ */
+  /* The series green, which is also the accent: one colour means "this is the
+   * good state" and "this is the primary action", and the system never has to
+   * explain a difference between them.
+   *
+   * `-bright` is the vivid value, for bars, marks and swatches carrying no
+   * text. `--accent` is the same hue darkened until it holds white at 4.5:1.
+   * `-ink` is it as text on a wash. */
+  --accent-bright: #4bd452;
+  --accent: #1f7f2f;
+  --accent-hover: #186b26;
+  --accent-ink: #136b1f;
+  --accent-wash: #ddf7df;
+  --accent-pill: #bff0c3;
+  --select: var(--accent);
+  --select-wash: #e4f5ee;
+
+  --action: var(--accent);
+  --action-hover: var(--accent-hover);
+  --action-ink: #ffffff;
+  --focus-ring: var(--accent);
+
+  /* --- Type -------------------------------------------------------------- */
+  /* Outfit: geometric humanist, matching the reference's letterforms. Circular
+   * bowls, double-storey `a`, single-storey `g` with an open hook, flat-cut
+   * terminals. */
+  --font-sans: Outfit, ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  /* Identifiers only: slick ids, MMSI, coordinates, and right-aligned table
+   * columns, the one place digits genuinely stack. Everything else is Outfit. */
+  --font-mono: 'DM Mono', ui-monospace, 'Cascadia Mono', monospace;
+
+  --text-3xs: 0.6875rem; /* 11 */
+  --text-2xs: 0.75rem;   /* 12 */
+  --text-xs: 0.8125rem;  /* 13 */
+  --text-sm: 0.875rem;   /* 14, body default */
+  --text-md: 0.9375rem;  /* 15 */
+  --text-lg: 1.0625rem;  /* 17 */
+  --text-xl: 1.3125rem;  /* 21 */
+  --text-2xl: 1.75rem;   /* 28 */
+  --text-3xl: 2.25rem;   /* 36 */
+
+  /* --- Space ------------------------------------------------------------- */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-7: 20px;
+  --space-8: 28px;
+  --space-9: 40px;
+  --gap-panel: 16px;
+
+  /* --- Size -------------------------------------------------------------- */
+  /*
+   * One height for anything you click or type into, and one for the app bar.
+   * They were repeated as literals in four files, which is how a field ends
+   * up 2px taller than the field beside it. Nothing sets its own height now:
+   * a control takes `--control-h`, and anything living in the bar derives
+   * from `--bar-h` rather than being measured against it.
+   */
+  --control-h: 38px;
+  --bar-h: 48px;
+
+  /* --- Shape ------------------------------------------------------------- */
+  /* Measured off the reference: generous, and softer than a typical console. */
+  --radius-control: 10px;
+  --radius-panel: 16px;
+  --radius-chip: 6px;
+
+  /* --- Elevation --------------------------------------------------------- */
+  /* Wide, soft and low-opacity, the way the reference's panels sit. Tinted
+   * warm, so a shadow never reads as grey dirt on a white page. */
+  --shadow-panel:
+    0 1px 2px rgb(58 46 38 / 0.06),
+    0 12px 32px rgb(58 46 38 / 0.1);
+  --shadow-pop:
+    0 2px 6px rgb(58 46 38 / 0.08),
+    0 20px 48px rgb(58 46 38 / 0.14);
+  --shadow-chip: 0 2px 10px rgb(16 28 24 / 0.35); /* the dark map pills */
+
+  /* --- Motion ------------------------------------------------------------ */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+
+  /* --- Scrollbars -------------------------------------------------------- */
+  /* Thin, and only as loud as a divider. A scrollbar is chrome about chrome:
+   * it should say where you are and otherwise disappear. */
+  --scroll-thumb: #cfc8c0;
+  --scroll-thumb-hover: #a8a097;
+  --scroll-size: 10px;
+
+  /* --- Layers ------------------------------------------------------------ */
+  --z-map-label: 2;
+  --z-panel: 4;
+  --z-popover: 8;
+  --z-notice: 16;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur-base: 1ms;
+  }
+}
+
+/* --- Base --------------------------------------------------------------- */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* The UA gives every button `padding: 1px 6px`. Left in place it is an
+ * invisible inset that makes a button a different shape from the link or span
+ * beside it, and squeezes an icon inside a fixed square. Buttons that want
+ * padding state it, like every other element here. */
+button {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* --- Scrollbars ---------------------------------------------------------- */
+
+/*
+ * Every scroll pane in the app. Firefox takes the two-property form, WebKit
+ * and Blink take the pseudo-elements; both are given, and both read the same
+ * tokens so a theme restyles them for free.
+ *
+ * The thumb is drawn with `background-clip: content-box` inside a transparent
+ * border, which is the only way to inset a WebKit thumb from the track edge.
+ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+
+::-webkit-scrollbar {
+  width: var(--scroll-size);
+  height: var(--scroll-size);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 99px;
+  background: var(--scroll-thumb);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scroll-thumb-hover);
+  background-clip: content-box;
+}
+
+/* Where both axes scroll, the corner should not be a grey square. */
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* --- Utilities ---------------------------------------------------------- */
+
+/* Identifiers, and right-aligned table columns. Nothing else. */
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'zero' 1; /* slashed zero: 0 and O are not confusable */
+  letter-spacing: -0.01em;
+}
+
+/* Every measurement read on its own: a stat, a confidence, a date. These never
+ * stack into a column, so Outfit's proportional digits are invisible there. */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

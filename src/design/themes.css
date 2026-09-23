@@ -1,0 +1,127 @@
+/*
+ * The two modes.
+ *
+ * One system, one ramp, one set of components. Only the ground and the ink
+ * invert.
+ *
+ * A mode is a property of the whole application, chosen by the person using
+ * it, not a property of a surface. The same screen has to be readable in an
+ * operations room at night and on a projector at noon, and which of those you
+ * are in is not something a route can know. Routes used to carry their own
+ * theme, which meant moving between them repainted the world for no reason
+ * the operator had asked for.
+ *
+ * `tokens.css` holds the light mode on `:root`, so anything unthemed still
+ * renders correctly. `.theme-light` therefore adds almost nothing; it exists
+ * so a class is always present and the toggle has two symmetrical states.
+ */
+
+.theme-light {
+  color-scheme: light;
+}
+
+/*
+ * Dark mode, sampled from the Dispatch board whose status bars became the
+ * system ramp in both modes.
+ *
+ * Only two kinds of value change here. Surfaces and ink invert. Each status
+ * colour keeps its hue and swaps which end carries the text: a pale wash with
+ * dark ink in light mode, a deep wash with light ink here.
+ */
+.theme-dark {
+  color-scheme: dark;
+
+  --page: #0e100f;
+  --panel: #1b1b1b; /* sampled */
+  --panel-raised: #212121;
+  --panel-sunken: #161616;
+  --panel-hover: #262626;
+
+  --line: #2e2e2e;
+  --line-soft: #242424;
+  --line-strong: #3d3d3d;
+
+  --ink: #ffffff;
+  --ink-secondary: #c4c4c4;
+  --ink-muted: #8d8d8d;
+  --ink-faint: #5e5e5e;
+  --ink-inverse: #121411;
+
+  --map-ground: #232323; /* sampled */
+  --map-ink: #ffffff;
+  --map-ink-muted: rgb(255 255 255 / 0.58);
+  --map-chip: #2b2b2b;
+  --map-chip-raised: #343434;
+  --map-chip-line: rgb(255 255 255 / 0.12);
+
+  /* The ramp in its native form. tokens.css carries the same five hues for
+   * light mode, darkened only where they must hold text. */
+  --series-1: #4bd452;
+  --series-2: #e6be42;
+  --series-3: #46bcea;
+  --series-4: #57e1e4;
+  --series-5: #e3464d;
+
+  --critical: #e3464d;
+  --critical-wash: #3a2024;
+  --critical-ink: #ff8f95;
+
+  --warning: #e6be42;
+  --warning-wash: #3a3320;
+  --warning-ink: #f0d27c;
+
+  --watch: #46bcea;
+  --watch-wash: #1c2f38;
+  --watch-ink: #8ad6f4;
+
+  --clear: #4bd452;
+  --clear-wash: #1d3220;
+  --clear-ink: #8ce791;
+
+  --inactive: #8d8d8d;
+  --inactive-wash: #2a2a2a;
+  --inactive-ink: #b0b0b0;
+
+  --slick: #ff802c;
+  --slick-fill: rgb(255 128 44 / 0.34);
+  --slick-bar: #de9454;
+  --slick-ink: #ffab6e;
+
+  --accent-bright: #4bd452;
+  --accent: #2b9436;
+  --accent-hover: #34ad41;
+  --accent-ink: #8ce791;
+  --accent-wash: #1d3220;
+  --accent-pill: #24401f;
+  --select: var(--accent-bright);
+  --select-wash: #1d3220;
+
+  --action: #4bd452;
+  --action-hover: #63e069;
+  --action-ink: #0e2011;
+  --focus-ring: #4bd452;
+
+  --scroll-thumb: #3d3d3d;
+  --scroll-thumb-hover: #565656;
+
+  /* On a dark ground a drop shadow does nothing, so separation comes from the
+   * gap between panels instead. The chip shadow stays: it sits on imagery. */
+  --shadow-panel: none;
+  --shadow-pop: 0 16px 40px rgb(0 0 0 / 0.5);
+  --shadow-chip: 0 2px 10px rgb(0 0 0 / 0.5);
+}
+
+/* A themed region owns its ground, so the whole app repaints on a toggle. */
+.theme-light,
+.theme-dark {
+  background: var(--page);
+  color: var(--ink);
+}
+
+/* The imagery is the one thing that cannot simply invert: a photograph has no
+ * dark variant. It is knocked back in dark mode so the chart sits at the same
+ * distance behind the panels as it does in light. */
+.theme-dark .sv-map,
+.theme-dark .pt-map img {
+  filter: saturate(0.85) brightness(0.52) contrast(1.05);
+}

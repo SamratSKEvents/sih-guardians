@@ -1,0 +1,303 @@
+/*
+ * Timeline.
+ *
+ * This began as the app's own `src/components/timeline/timeline.css` and has
+ * now replaced it: the app imports this file, and the private copy is gone.
+ * Every rule, selector and dimension is still the app's. The only edits were
+ * token names, remapped to the sampled palette:
+ *
+ *   --surface        -> --panel
+ *   --surface-hover  -> --panel-hover
+ *   --surface-sunken -> --panel-sunken
+ *   --surface-raised -> --panel-raised
+ *   --action-fill    -> --action
+ *   --action-fill-hover -> --action-hover
+ *
+ * One value changed rather than renamed: the elapsed wash was a light tint for
+ * a dark surface, so it is inverted to an ink tint for a light one. Same
+ * intent, same weight.
+ */
+
+.tl {
+  display: flex;
+  flex-direction: column;
+  /* Scrubbing drags across the labels; it must not select them. */
+  user-select: none;
+  -webkit-user-select: none;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6) var(--space-5);
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+
+/* Transport row ------------------------------------------------------- */
+
+.tl-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-7);
+  min-height: 36px;
+}
+
+.tl-transport {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Transport and speed are IconButton and Segmented from this library. Only
+ * the play button is local, because a round accent-filled primary is its own
+ * affordance and the reference draws it that way too. */
+
+.tl-play {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--action-ink);
+  background: var(--action);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.tl-play:hover {
+  color: var(--action-ink);
+  background: var(--action-hover);
+}
+
+/* The clock is the state of the whole page: the largest figure on the bar. */
+.tl-readout {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 15rem;
+}
+
+.tl-clock {
+  color: var(--ink);
+  font-size: var(--text-xl);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.tl-zone {
+  color: var(--ink-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-3xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.tl-date {
+  margin-left: var(--space-3);
+  color: var(--ink-secondary);
+  font-size: var(--text-sm);
+}
+
+/* Surface controls sit with the speed control: both change what the clock
+ * does. The auto margin moves to whichever comes first. */
+.tl-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-left: auto;
+}
+
+.tl-controls + .tl-speeds {
+  margin-left: 0;
+}
+
+.tl-speeds {
+  display: inline-flex;
+  margin-left: auto;
+}
+
+/* Rail: the bounds sit at the ends of the track they describe. */
+
+.tl-rail {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.tl-bound {
+  flex: none;
+  color: var(--ink-muted);
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tl-rail .tl-track {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Track --------------------------------------------------------------- */
+
+.tl-track {
+  position: relative;
+  height: 40px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-control);
+  background: var(--panel-sunken);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.tl-elapsed {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  /* Inverted from the app: a light wash on a dark surface becomes an ink wash
+   * on a light one. Same intent, same weight. */
+  background: rgb(29 36 34 / 0.05);
+  pointer-events: none;
+}
+
+.tl-tick {
+  position: absolute;
+  top: 0;
+  height: 6px;
+  width: 1px;
+  background: var(--line-strong);
+  pointer-events: none;
+}
+
+.tl-tick.is-labelled {
+  height: 100%;
+  background: var(--line-soft);
+}
+
+.tl-tick-label {
+  position: absolute;
+  bottom: var(--space-2);
+  left: var(--space-2);
+  /* Secondary, not muted: the label overlaps its own labelled tick rule, so
+   * the ground under it is --line-soft rather than the track. Muted measured
+   * 4.32:1 there. */
+  color: var(--ink-secondary);
+  font-size: var(--text-3xs);
+  white-space: nowrap;
+}
+
+.tl-cursor {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--ink);
+  pointer-events: none;
+}
+
+.tl-cursor::before {
+  position: absolute;
+  top: -3px;
+  left: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ink);
+  content: '';
+}
+
+/* Collapsed ----------------------------------------------------------- */
+
+.tl-collapsed {
+  position: relative;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-6);
+  /* Extra below, so the position line along the bottom edge is not crowding
+   * the text sitting above it. */
+  padding: var(--space-4) var(--space-6) var(--space-5);
+}
+
+.tl-collapsed .tl-play {
+  width: 30px;
+  height: 30px;
+}
+
+.tl-collapsed-time {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex: none;
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* What the surface wants kept visible while the timeline is folded. */
+.tl-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-width: 0;
+  padding-left: var(--space-6);
+  border-left: 1px solid var(--line);
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.tl-summary b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.tl-collapsed-window {
+  flex: none;
+  margin-left: auto;
+  color: var(--ink-muted);
+  font-size: var(--text-2xs);
+  white-space: nowrap;
+}
+.tl-collapsed-window i {
+  font-style: normal;
+}
+
+/* Along the bottom edge of the bar, full width: it reads as the position in
+ * the record without occupying a column of the row. */
+.tl-mini {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--line-soft);
+}
+
+.tl-mini-fill {
+  display: block;
+  height: 100%;
+  border-radius: 0 99px 99px 0;
+  background: var(--accent-bright);
+  transition: width var(--dur-base) var(--ease-out);
+}
+
+.tl-collapsed .tl-toggle {
+  margin-left: auto;
+}
+
+/* The bounds are the first thing to go when space runs short: the readout
+ * already names the moment, and the track still shows the position. */
+@media (max-width: 900px) {
+  .tl-bound {
+    display: none;
+  }
+
+  .tl-bar {
+    gap: var(--space-5);
+  }
+
+  /* Collapsed, the clock and the position line are what must survive. */
+  .tl-summary,
+  .tl-collapsed-window {
+    display: none;
+  }
+}

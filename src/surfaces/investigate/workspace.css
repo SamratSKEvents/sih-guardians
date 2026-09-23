@@ -1,0 +1,1290 @@
+/**
+ * The investigation workspace.
+ *
+ * Spills' composition and Spills' visual language, deliberately: a persistent
+ * 300px column docked to the left edge, one hairline against the chart, and
+ * the chart filling everything else on the map ground. The rail's sections are
+ * the filter rail's own `Advanced variant="plain"` headings, so neither column
+ * carries a box, a card or a rule this surface invented for itself.
+ *
+ * Every value is a token. A literal in this file is a bug.
+ */
+
+.ws {
+  /* Positioned ancestor for the chart's chips. Without one they resolve
+   * against the initial containing block and grow the document — HANDOFF.md §6
+   * has the two measurements this already cost. */
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  background: var(--page);
+}
+
+.ws-bare {
+  display: block;
+  padding: var(--space-7);
+  background: var(--page);
+  overflow-y: auto;
+}
+
+/* ------------------------------------------------------------- the top bar */
+
+/* Identity in one strip, on the app bar's own terms: one row, one hairline
+ * under it, nothing boxed. */
+.ws-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+
+.ws-top h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ------------------------------------------------------------------ the tabs */
+
+/* In the identity strip, because they change what the whole surface is about.
+ * An underline rather than a pill: the strip already carries a button. */
+.ws-tabs {
+  display: flex;
+  align-self: stretch;
+  gap: var(--space-5);
+  margin-left: var(--space-5);
+}
+
+.ws-tab {
+  padding: 0 var(--space-1);
+  border-bottom: 2px solid transparent;
+  color: var(--ink-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.ws-tab:hover {
+  color: var(--ink);
+}
+
+.ws-tab[aria-current='page'] {
+  border-bottom-color: var(--accent);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* Response is the only tab that asks for a decision rather than describing
+ * one, and it is marked whether or not it is the one you are on. */
+.ws-tab[data-accent] {
+  color: var(--accent-ink);
+}
+
+.ws-id,
+.ws-when {
+  font-size: var(--text-2xs);
+  color: var(--ink-muted);
+}
+
+/* The time and the export close the strip. */
+.ws-when {
+  margin-left: auto;
+}
+
+/* --------------------------------------------------------------- the split */
+
+.ws-split {
+  display: grid;
+  /* The rail's width is the operator's, dragged on the grip and clamped in
+   * the handler; the grip itself is the only other fixed column. */
+  grid-template-columns: minmax(0, 1fr) auto var(--rail-w, 340px);
+  min-height: 0;
+}
+
+/* Detection gets the three-part arrangement from the reference: a compact
+ * section rail, the image as the primary surface, and evidence at the right. */
+.ws-split-detection {
+  grid-template-columns: 212px minmax(0, 1fr) auto var(--rail-w, 390px);
+}
+
+.ws-detection-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-6) var(--space-4);
+  border-right: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.ws-detection-nav button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  min-height: 42px;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-control);
+  color: var(--ink-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.ws-detection-nav button:hover {
+  background: var(--panel-hover);
+  color: var(--ink);
+}
+
+.ws-detection-nav button[aria-current='page'] {
+  background: var(--accent-wash);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.ws-split-detection .ws-rail-body {
+  padding: var(--space-5);
+}
+
+.ws-split-detection .ws-rail-body > .stage {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* ----------------------------------------------------------------- the map */
+
+/* Edge to edge. No padding, no border, no radius: the chart IS the left side,
+ * the way the globe is the whole of Spills' right. Two rows, as `.sp-stage`:
+ * the chart, and the dock a timeline bar portals into. An empty dock is zero
+ * tall, so a stage without a clock gives the chart the whole column. */
+.ws-map {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.ws-map-view {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--map-ground);
+}
+
+.ws-charts {
+  position: absolute;
+  inset: 0;
+}
+
+.ws-charts > .imap {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+/* ---------------------------------------------------------------- the grip */
+
+.ws-grip {
+  width: var(--space-2);
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.ws-grip:hover,
+.ws-grip:active {
+  background: var(--accent-pill);
+}
+
+/* ---------------------------------------------------------------- the rail */
+
+/* The filter rail's column, mirrored and resizable: same ground, same plain
+ * headings, and now the stage's own detail below them. */
+.ws-rail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--panel);
+}
+
+.ws-rail-body {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-6);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* The stage's own detail is a section of the rail like any other, so it takes
+ * the same rule above it that separates the plain headings. */
+.ws-rail-body > .stage,
+.ws-rail-body > .stage + .ds-advanced-plain {
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--line);
+}
+
+/* Everything a stage says, in a column that can be any width the operator
+ * drags it to: one column of fields, tables that scroll rather than squeeze. */
+.ws-rail-body .stage-cols,
+.ws-rail-body .stage-split {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* ------------------------------------------------------------- the stages */
+
+.ws-stages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0 calc(var(--space-4) * -1);
+  padding: 0;
+  list-style: none;
+}
+
+.ws-stage-link {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  color: var(--ink-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.ws-stage-link:hover {
+  background: var(--panel-hover);
+}
+
+.ws-stage-link[aria-current='step'] {
+  background: var(--panel-hover);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.ws-stage-state {
+  font-size: var(--text-3xs);
+  font-weight: 500;
+}
+
+/* ------------------------------------------------------------ the download */
+
+.ws-export {
+  position: relative;
+}
+
+.ws-export summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--control-h);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  list-style: none;
+  cursor: pointer;
+}
+
+.ws-export summary::-webkit-details-marker {
+  display: none;
+}
+
+.ws-export summary:hover {
+  border-color: var(--accent);
+}
+
+.ws-export[open] summary svg:last-child {
+  transform: rotate(180deg);
+}
+
+.ws-export-menu {
+  position: absolute;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 15rem;
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--panel-raised);
+  box-shadow: var(--shadow-panel);
+}
+
+.ws-export-menu button,
+.ws-export-menu a {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+}
+
+.ws-export-menu a {
+  text-decoration: none;
+}
+.ws-export-menu a:hover {
+  background: var(--panel-hover);
+}
+.ws-export-menu a small {
+  color: var(--ink-muted);
+  font-size: var(--text-2xs);
+}
+
+.ws-export-menu button:disabled {
+  color: var(--ink-muted);
+  cursor: not-allowed;
+}
+
+.ws-export-menu small {
+  font-size: var(--text-2xs);
+  color: var(--ink-muted);
+}
+
+/* ---------------------------------------------------------- the dimensions */
+
+.ws-dims {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ws-dims li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-1) var(--space-3);
+}
+
+.ws-dim-label {
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
+.ws-dim-state {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-align: right;
+}
+
+.ws-dims small {
+  grid-column: 1 / -1;
+  font-size: var(--text-2xs);
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+
+.ws-note,
+.stage-note {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.55;
+  color: var(--ink-secondary);
+}
+
+/* ----------------------------------------------------------- status colour */
+
+/*
+ * One rule per state, keyed to the status role rather than to a ramp
+ * position — DESIGN.md §6: the day the ramp was reordered, a chart keyed to
+ * positions silently changed meaning.
+ */
+.ws-dim-state.is-clear {
+  color: var(--clear-ink);
+}
+
+.ws-dim-state.is-warning {
+  color: var(--warning-ink);
+}
+
+.ws-dim-state.is-watch {
+  color: var(--watch-ink);
+}
+
+.ws-dim-state.is-critical {
+  color: var(--critical-ink);
+}
+
+.ws-dim-state.is-inactive {
+  color: var(--ink-muted);
+}
+
+/* -------------------------------------------------------------- the stages */
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* Detection evidence panel ------------------------------------------------ */
+.detect-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.detect-result {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+  padding: var(--space-4) 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.detect-result.is-watch {
+  border-color: var(--line);
+}
+
+.detect-result-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 5px;
+  background: var(--accent-ink);
+  color: white;
+}
+
+.detect-result.is-watch .detect-result-icon {
+  background: var(--warning-ink);
+}
+
+.detect-result h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.detect-result p,
+.detect-copy {
+  margin: var(--space-2) 0 0;
+  color: var(--ink-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.detect-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-4) 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.detect-card > h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.detect-card > h3 svg {
+  box-sizing: content-box;
+  width: 16px;
+  height: 16px;
+  padding: 4px;
+  border-radius: 5px;
+  background: var(--accent-wash);
+  flex: none;
+  color: var(--accent-ink);
+}
+
+.detect-rows {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.detect-rows > div {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.detect-rows dt {
+  color: var(--ink-secondary);
+  font-size: var(--text-xs);
+}
+
+.detect-rows dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.detect-rows dd small {
+  color: var(--ink-muted);
+  font-size: var(--text-3xs);
+  font-weight: 400;
+}
+
+.detect-score {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.detect-score i,
+.detect-score-list i {
+  display: block;
+  height: 8px;
+  flex: 1;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--panel-sunken);
+}
+
+.detect-score i::before,
+.detect-score-list i b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.detect-score i::before {
+  content: '';
+}
+
+.detect-score-list {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.detect-score-list > div {
+  display: grid;
+  grid-template-columns: minmax(84px, 1fr) minmax(80px, 1.35fr) 32px;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--ink-secondary);
+  font-size: var(--text-xs);
+}
+
+.detect-score-list strong {
+  color: var(--ink);
+  font-size: var(--text-xs);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.detect-score-list .is-best {
+  background: var(--accent);
+}
+
+.detect-score-list b:not(.is-best) {
+  background: var(--ink-muted);
+}
+
+.detect-evidence,
+.detect-next,
+.detect-checks {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  color: var(--ink-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  list-style: none;
+}
+
+.detect-evidence li,
+.detect-checks li {
+  position: relative;
+  padding-left: 20px;
+}
+
+.detect-evidence li::before {
+  position: absolute;
+  left: 2px;
+  color: var(--clear-ink);
+  content: '✓';
+  font-weight: 700;
+}
+
+.detect-evidence.is-against li::before {
+  color: var(--warning-ink);
+  content: '•';
+  font-size: 18px;
+  line-height: 0.9;
+}
+
+.detect-next {
+  counter-reset: checks;
+}
+
+.detect-next li {
+  counter-increment: checks;
+}
+
+.detect-next li::before {
+  content: counter(checks) '. ';
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.detect-vessels {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.detect-vessels > div {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.detect-vessels > div:last-child {
+  border-bottom: 0;
+}
+
+.detect-vessel-mark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--select-wash);
+  color: var(--select);
+}
+
+.detect-vessel-mark.tone-1 { color: var(--series-2); background: var(--warning-wash); }
+.detect-vessel-mark.tone-2 { color: var(--ink-muted); background: var(--panel-sunken); }
+
+.detect-vessels b,
+.detect-vessels small {
+  display: block;
+}
+
+.detect-vessels b,
+.detect-vessels strong {
+  color: var(--ink);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.detect-vessels small {
+  margin-top: 2px;
+  color: var(--ink-muted);
+  font-size: var(--text-3xs);
+}
+
+.detect-chain {
+  display: grid;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0 0 0 var(--space-7);
+  color: var(--ink);
+  font-size: var(--text-xs);
+}
+
+.detect-chain li { padding-left: var(--space-2); }
+.detect-chain b,
+.detect-chain span { display: block; }
+.detect-chain span { margin-top: var(--space-1); color: var(--ink-muted); }
+
+.detect-checks li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-left: 0;
+}
+
+.detect-checks svg { color: var(--clear-ink); }
+.detect-checks li:last-child svg { color: var(--warning-ink); }
+
+.stage h3 {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.stage h4 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.stage-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: var(--space-6) var(--space-7);
+}
+
+.stage-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: var(--gap-panel);
+  align-items: start;
+}
+
+.stage-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.stage-list-head h3 {
+  margin: 0;
+}
+
+.stage-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-panel);
+}
+
+.stage-wait {
+  margin: 0;
+  padding: var(--space-6) 0;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+/*
+ * What a figure refuses to claim, held directly under it. `Method` does this
+ * for a computed value; this is the same statement for a whole section.
+ */
+.stage-refuses {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin: var(--space-5) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line-soft);
+  font-size: var(--text-xs);
+  line-height: 1.55;
+  color: var(--ink-secondary);
+}
+
+.stage-controls {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: var(--space-2) var(--space-4);
+  align-items: center;
+  justify-content: start;
+}
+
+.stage-control-label {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--ink-secondary);
+}
+
+.stage-control-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: var(--text-2xs);
+  color: var(--ink-muted);
+}
+
+.stage-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.stage-transport {
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--line-soft);
+}
+
+.stage-approval {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* One score term: the bar, then the measurements behind it. */
+.stage-term + .stage-term {
+  margin-top: var(--space-5);
+}
+
+.stage-raw {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: var(--space-3) 0 0;
+}
+
+.stage-raw div {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.stage-raw dt {
+  font-size: var(--text-2xs);
+  color: var(--ink-muted);
+}
+
+.stage-raw dd {
+  margin: 0;
+  font-size: var(--text-2xs);
+  color: var(--ink-secondary);
+}
+
+.stage-formula {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line-soft);
+}
+
+.stage-formula p:first-child {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--ink);
+}
+
+.stage-formula .stage-note + .stage-note {
+  margin-top: var(--space-2);
+}
+
+/* ----------------------------------------------------------------- the gap */
+
+.gap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.gap-needs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gap-needs li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-chip);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.gap-needs li[data-has] {
+  color: var(--ink);
+}
+
+/* A ring for missing, a filled disc for present: the difference survives
+ * greyscale and colour-blindness, which a red/green pair does not. */
+.gap-mark {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+}
+
+.gap-needs li[data-has] .gap-mark {
+  border-color: var(--clear);
+  background: var(--clear);
+}
+
+.gap-state {
+  font-size: var(--text-2xs);
+  color: var(--ink-muted);
+}
+
+/* ------------------------------------------------------------ the evidence */
+
+.ev-questions,
+.ev-coverage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ev-questions li,
+.ev-coverage li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2) var(--space-4);
+  align-items: baseline;
+}
+
+.ev-question,
+.ev-coverage-label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.ev-questions small,
+.ev-coverage small {
+  grid-column: 1 / -1;
+  font-size: var(--text-2xs);
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+.ev-pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: stage;
+}
+
+.ev-pipeline li {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: var(--space-1) var(--space-4);
+  padding-left: var(--space-5);
+  border-left: 2px solid var(--line);
+}
+
+.ev-stage {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.ev-producer {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  text-align: right;
+}
+
+.ev-output {
+  grid-column: 1 / -1;
+  font-size: var(--text-xs);
+  color: var(--ink-secondary);
+}
+
+.ev-pipeline small {
+  grid-column: 1 / -1;
+  font-size: var(--text-2xs);
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+/* A coordinate pair reads as one value, so it does not wrap mid-range. */
+.ev-pair {
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------- the chart */
+
+/*
+ * The chart keeps `--map-ground`, which stays dark in BOTH modes. Satellite
+ * imagery has no light variant, so a chart that inverted would need a second
+ * label treatment and the system would be back to two languages — DESIGN.md's
+ * one documented exception to the mode system.
+ */
+.imap {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  min-height: 18rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--map-ground);
+}
+
+/* Cesium's canvas. The viewer sizes itself to this, and everything else on
+ * the chart is absolutely positioned over it. */
+.imap-host {
+  position: absolute;
+  inset: 0;
+}
+
+.imap-host .cesium-viewer,
+.imap-host .cesium-widget,
+.imap-host .cesium-widget canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.detect-view-toggle {
+  position: absolute;
+  z-index: 20;
+  top: var(--space-3);
+  left: 50%;
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  transform: translateX(-50%);
+  border: 1px solid var(--map-chip-line);
+  border-radius: 6px;
+  background: var(--map-chip);
+  box-shadow: var(--shadow-panel);
+}
+
+.detect-view-toggle button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--map-ink-muted);
+  font: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.detect-view-toggle button[aria-pressed='true'] {
+  background: var(--accent);
+  color: #08141d;
+  font-weight: 650;
+}
+
+.detect-view-toggle button small {
+  padding: 2px 4px;
+  border-radius: 3px;
+  background: var(--warning-wash);
+  color: var(--warning-ink);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.imap-credit {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-2);
+  max-width: 60%;
+  margin: 0;
+  color: var(--map-ink-muted, rgb(255 255 255 / 55%));
+  font-size: var(--text-3xs);
+  text-align: right;
+  pointer-events: none;
+}
+
+/*
+ * Anything sitting on the chart is a chip. Bare text over `--map-ground` is
+ * legible in one mode and invisible in the other — this has been caught three
+ * times in this repo.
+ */
+.imap-chip {
+  position: absolute;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--map-chip-line);
+  border-radius: var(--radius-chip);
+  background: var(--map-chip);
+  color: var(--map-ink);
+  font-size: var(--text-2xs);
+}
+
+/* The tab's steps, top left of the chart. */
+.imap-steps {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  display: flex;
+  gap: var(--space-2);
+}
+
+.imap-step {
+  position: static;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.imap-step[aria-current='step'] {
+  border-color: var(--accent);
+  color: var(--map-ink);
+  font-weight: 600;
+}
+
+.imap-step:not([aria-current='step']) {
+  opacity: 0.75;
+}
+
+/* The scene, between the ground and the marks. */
+/* Bottom left, clear of the stage chips above and the credit opposite. It
+ * exists only while the chart is off its subject. */
+.imap-recentre {
+  position: absolute;
+  bottom: var(--space-3);
+  left: var(--space-3);
+  height: var(--control-h);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  box-shadow: var(--shadow-panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.imap-recentre:hover {
+  border-color: var(--line-strong);
+}
+
+.imap-layers {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 15rem;
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--panel);
+  box-shadow: var(--shadow-panel);
+}
+
+/* The claim's line form, beside its layer, so the dash on the chart is
+ * readable without consulting a legend elsewhere. */
+.imap-claim {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-muted);
+}
+
+/* ------------------------------------------------------------- narrow view */
+
+@media (max-width: 900px) {
+  .ws-split {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  /* No column to drag when there are no columns. */
+  .ws-grip {
+    display: none;
+  }
+
+  .ws-rail {
+    border-top: 1px solid var(--line);
+  }
+
+  .stage-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+}
+
+@media (max-width: 1100px) {
+  .ws-split-detection {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(320px, 48vh) auto;
+  }
+
+  .ws-detection-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: var(--space-3);
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .ws-detection-nav button { flex: none; }
+
+  .ws-split-detection .ws-map { grid-row: 2; }
+  .ws-split-detection .ws-rail { grid-row: 3; max-height: 460px; }
+}
+
+.imap-clock-note {
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The Bonn appearance code, as a key. Swatch, name, thickness range. */
+.bonn {
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.bonn li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-1) 0;
+  font-size: var(--text-sm);
+}
+
+.bonn-chip {
+  width: 1.5rem;
+  height: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+}
+
+.bonn-range {
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}

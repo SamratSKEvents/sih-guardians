@@ -1,0 +1,412 @@
+/*
+ * Filter controls.
+ *
+ * These live in a narrow column, so everything here is tuned for ~280px:
+ * labels wrap rather than truncate, and no control needs a second line to be
+ * legible.
+ */
+
+/* ===================================================================== Info */
+
+.ds-info {
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  margin-left: var(--space-2);
+  border-radius: 50%;
+  color: var(--ink-muted);
+  vertical-align: -2px;
+  cursor: help;
+}
+.ds-info:hover,
+.ds-info:focus-visible {
+  color: var(--accent-ink);
+}
+
+/* =================================================================== Switch */
+
+.ds-switch {
+  /* The hidden input below is absolutely positioned. Without this it would
+   * resolve against the initial containing block, escape every clipping
+   * ancestor, and add its offset to the height of the whole document. */
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+  /* Same row box as .ds-toggle. A switch and a checkbox appear in the same
+   * list, so they must share padding or their value columns cannot align. */
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.ds-switch:hover {
+  background: var(--panel-hover);
+}
+
+/* The native input stays in the accessibility tree and drives every state
+ * below; the track and thumb are painted from it. */
+.ds-switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ds-switch-track {
+  flex: none;
+  position: relative;
+  width: 34px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: 99px;
+  background: var(--line-strong);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.ds-switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--panel-raised);
+  transition: translate var(--dur-fast) var(--ease-out);
+}
+
+.ds-switch input:checked + .ds-switch-track {
+  background: var(--accent);
+}
+.ds-switch input:checked + .ds-switch-track .ds-switch-thumb {
+  translate: 14px 0;
+}
+.ds-switch input:focus-visible + .ds-switch-track {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-switch-label {
+  color: var(--ink-secondary);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 1.45;
+}
+.ds-switch input:checked ~ .ds-switch-label {
+  color: var(--ink);
+}
+.ds-switch-value {
+  flex: none;
+  margin-left: auto;
+  padding-left: var(--space-5);
+  color: var(--ink-muted);
+  font-size: var(--text-2xs);
+  font-weight: 500;
+}
+.ds-switch input:checked ~ .ds-switch-value {
+  color: var(--ink-secondary);
+  font-weight: 600;
+}
+
+.ds-switch:has(input:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* =================================================================== Search */
+
+/* One bordered unit split by a hairline, so the action reads as part of the
+ * field rather than as an icon floating inside it. */
+.ds-search {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--panel-raised);
+  overflow: hidden;
+}
+.ds-search:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+
+.ds-search input {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--control-h);
+  padding: var(--space-4) var(--space-5);
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-size: var(--text-xs);
+  outline: none;
+}
+.ds-search input::placeholder {
+  /* Placeholder is real text and needs real contrast, not a hint of grey. */
+  color: var(--ink-muted);
+}
+/* The browser's own clear affordance duplicates the one in the panel. */
+.ds-search input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.ds-search button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  border-left: 1px solid var(--line-strong);
+  color: var(--ink-muted);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.ds-search button:hover {
+  background: var(--panel-hover);
+  color: var(--ink);
+}
+
+/* ============================================================== RangeSlider */
+
+.ds-range {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.ds-range-head {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.ds-range-rail {
+  position: relative;
+  height: 18px;
+  margin: 0 7px; /* room for the handles at either extreme */
+}
+
+.ds-range-rail::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -7px;
+  left: -7px;
+  height: 5px;
+  translate: 0 -50%;
+  border-radius: 99px;
+  background: #e3e1dd;
+}
+
+.ds-range-fill {
+  position: absolute;
+  top: 50%;
+  height: 5px;
+  translate: 0 -50%;
+  border-radius: 99px;
+  background: var(--accent-bright);
+}
+
+.ds-range-handle {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  translate: -50% -50%;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: var(--panel-raised);
+  cursor: ew-resize;
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+.ds-range-handle:hover,
+.ds-range-handle:focus-visible {
+  box-shadow: 0 0 0 4px var(--accent-wash);
+}
+
+.ds-range-scale {
+  position: relative;
+  height: 14px;
+}
+.ds-range-scale span {
+  position: absolute;
+  top: 0;
+  translate: -50% 0;
+  color: var(--ink-muted);
+  font-size: var(--text-3xs);
+}
+/* The first and last stops hug the ends rather than overhanging them. */
+.ds-range-scale span:first-child {
+  translate: 0 0;
+  left: 0 !important;
+}
+.ds-range-scale span:last-child {
+  translate: -100% 0;
+  left: 100% !important;
+}
+
+/* ============================================================== ScaleSlider */
+
+.ds-scale {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.ds-scale-head {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: var(--text-xs);
+}
+
+.ds-scale-rail {
+  position: relative;
+  display: grid;
+  align-items: center;
+  height: 18px;
+}
+
+.ds-scale-ticks {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 100%;
+  pointer-events: none;
+}
+.ds-scale-ticks i {
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  height: 2px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+
+.ds-scale input[type='range'] {
+  position: relative;
+  width: 100%;
+  height: 5px;
+  appearance: none;
+  border-radius: 99px;
+  background: #e3e1dd;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.ds-scale input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: var(--panel-raised);
+  cursor: pointer;
+}
+.ds-scale input[type='range']::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: var(--panel-raised);
+  cursor: pointer;
+}
+
+.ds-scale-ends {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: var(--text-2xs);
+}
+
+/* ============================================================== DateRangeRow */
+
+.ds-daterange {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: var(--control-h);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--panel-raised);
+  color: var(--ink);
+  font-size: var(--text-xs);
+  text-align: left;
+}
+.ds-daterange i {
+  color: var(--ink-muted);
+  font-style: normal;
+}
+.ds-daterange svg {
+  flex: none;
+  color: var(--ink-muted);
+}
+.ds-daterange:disabled {
+  /* Reporting the window, not setting it. Still legible: the dates are the
+   * point, and dimming them to signal "not a control" would lose them. */
+  cursor: default;
+}
+.ds-daterange:not(:disabled):hover {
+  border-color: var(--accent);
+}
+
+/* The editable form: one box per end of the window.
+ *
+ * Nothing here sets a height. The box is `--control-h` like every other
+ * control, and the label above it makes the row taller by exactly its own
+ * line — which is what a label is supposed to cost. */
+.ds-daterange-pair {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.ds-datefield {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ds-datefield > span {
+  color: var(--ink-muted);
+  font-size: var(--text-3xs);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ds-datefield input {
+  min-width: 0;
+  min-height: var(--control-h);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--panel-raised);
+  color: var(--ink);
+  font-size: var(--text-xs);
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.ds-datefield input:hover,
+.ds-datefield input:focus-visible {
+  border-color: var(--accent);
+}
+
+.ds-datefield input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  /* The glyph is the one hint that the field opens a calendar, so it takes
+   * the muted ink rather than the browser's own blue-black. */
+  opacity: 0.55;
+}
+
+.ds-datefield input:hover::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}
