@@ -16,7 +16,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEven
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
-  Activity, AlertTriangle, ArrowRight, ChevronDown, Clock, Compass, Crosshair, Droplets, Gauge, Layers, Leaf, MapPin, Maximize, Navigation, Pause, Play,
+  Activity, AlertTriangle, ArrowRight, ChevronDown, Clock, Compass, Crosshair, Droplets, Gauge, Layers, Leaf, MapPin, Maximize, Pause, Play, SkipBack, SkipForward,
   RotateCcw, Ship, Target, Thermometer, Waves, Wind,
 } from 'lucide-react';
 import { Badge } from '../../../design/components';
@@ -28,7 +28,8 @@ import { loadLandRings } from '../../../forecast/land';
 import { fromEnvironment, SYNTHETIC, type Forcing } from '../../../forecast/forcing';
 import { ASSUMED_MEAN_UM } from '../../../forecast/context';
 import { releaseRings } from '../../../forecast/useForecastRun';
-import { LiveDrift, RAMP_CSS, type LiveStats } from '../../../forecast/live';
+import { RAMP_CSS, type LiveFrame, type LiveStats } from '../../../forecast/live';
+import { FRAME_MIN, type LiveMessage, type LiveRequest } from '../../../forecast/live.worker';
 import type { CoastPoint, OutlineMessage, OutlineRequest, OutlineStep } from '../../../forecast/outline.worker';
 import type { LonLat } from '../../../forecast/engine';
 import { when } from '../../../format';
@@ -91,7 +92,6 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
   const areaM2 = Number(p.areaM2) || 0;
   const volumeM3 = (areaM2 * ASSUMED_MEAN_UM) / 1e6;
   const backward = direction === 'backward';
-  const H = backward ? 12 : 24;
 
   /* ----------------------------------------------------------- forcing */
   const envArtifact = useArtifact<Environment>(incidentId, fetchEnvironment);
@@ -124,56 +124,48 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
     return () => void (live = false);
   }, [slick.id]);
 
-  /* ---------------------------------------------------------- live run */
-  const drift = useRef<LiveDrift | undefined>(undefined);
-  const [head, setHead] = useState(0);
-  const [scrub, setScrub] = useState<number>();
+  /* ---------------------------------------------------------- live runs */
+  // Both directions run at once in workers; the clock spans −12 h to +24 h and
+  // blends between the frames either side of it, so the oil glides.
+  const forcingKey = `${forcing.windSpeed}|${forcing.windDirDeg}|${forcing.driftU}|${forcing.driftV}`;
+  const fwdRun = useLiveRun(release, volumeM3, forcing, false, 24, `${slick.id}|${forcingKey}`);
+  const bwdRun = useLiveRun(release, volumeM3, forcing, true, 12, `${slick.id}|${forcingKey}`);
+  const [t, setT] = useState(0);
+  const tRef = useRef(0);
+  const seek = (v: number) => { tRef.current = Math.max(-12, Math.min(24, v)); setT(tRef.current); };
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1800);
-  const [stats, setStats] = useState<LiveStats>();
-  const [problem, setProblem] = useState<string | null>(null);
-  const [runId, setRunId] = useState(0);
-  const forcingKey = `${forcing.windSpeed}|${forcing.windDirDeg}|${forcing.driftU}|${forcing.driftV}`;
-  useEffect(() => {
-    if (!landRings || !release.length || volumeM3 <= 0) return;
-    const d = new LiveDrift(release, volumeM3, forcing, backward, landRings);
-    drift.current = d;
-    setProblem(d.problem);
-    setHead(0);
-    setScrub(undefined);
-    setStats(d.stats());
-    setPlaying(true);
-    setRunId((x) => x + 1);
-    return () => { drift.current = undefined; };
-  }, [landRings, slick.id, backward, forcingKey]);
+  useEffect(() => { seek(0); setPlaying(true); }, [slick.id]);
   useEffect(() => {
     if (!playing) return;
     let last = performance.now();
-    let lastStats = 0;
     let raf = requestAnimationFrame(function tick(now) {
-      const d = drift.current;
-      const wall = Math.min(0.08, Math.max(0, (now - last) / 1000));
-      last = now;
-      if (d) {
-        if (d.hour >= H - 1e-6) setPlaying(false);
-        else {
-          d.step(Math.min(wall * speed, H * 3600 - d.hour * 3600));
-          setHead(d.hour);
-          if (now - lastStats > 250) { lastStats = now; setStats(d.stats()); }
-        }
-      }
       raf = requestAnimationFrame(tick);
+      if (now - last < 30) return;
+      const wall = Math.min(0.1, (now - last) / 1000);
+      last = now;
+      const dir = backward ? -1 : 1;
+      const edge = backward ? -Math.min(12, bwdRun.head.current) : Math.min(24, fwdRun.head.current);
+      if ((backward && tRef.current <= -12 + 1e-6) || (!backward && tRef.current >= 24 - 1e-6)) { setPlaying(false); return; }
+      const next = tRef.current + (dir * wall * speed) / 3600;
+      seek(backward ? Math.max(edge, next) : Math.min(edge, next));
     });
     return () => cancelAnimationFrame(raf);
-  }, [playing, speed, H, runId]);
-  const shownHour = scrub ?? head;
-  const overlay = useMemo(() => {
-    const d = drift.current;
-    if (!d) return undefined;
-    if (scrub === undefined || scrub >= head - 0.01) return d.bounds ? { canvas: d.canvas, bounds: d.bounds } : undefined;
-    const snap = [...d.snapshots].reverse().find((s) => s.hour <= scrub + 1e-6) ?? d.snapshots[0];
-    return snap ? { canvas: snap.canvas, bounds: snap.bounds } : undefined;
-  }, [head, scrub, runId]);
+  }, [playing, speed, backward]);
+  // Crossing T0 on the clock switches the direction the pages describe.
+  useEffect(() => {
+    if (t < 0 && !backward) setDirection('backward');
+    if (t > 0 && backward) setDirection('forward');
+  }, [t < 0, t > 0]);
+  const run = t < 0 || (t === 0 && backward) ? bwdRun : fwdRun;
+  const a = Math.abs(t);
+  const i = Math.min(Math.floor((a * 60) / FRAME_MIN), Math.max(0, run.frames.current.length - 1));
+  const fa = run.frames.current[i];
+  const fb = run.frames.current[i + 1];
+  const mix = fb ? Math.max(0, Math.min(1, (a * 60) / FRAME_MIN - i)) : 0;
+  const overlay = { a: fa?.canvas ? { canvas: fa.canvas, bounds: fa.bounds, opacity: 1 - mix } : undefined, b: fb?.canvas && mix > 0 ? { canvas: fb.canvas, bounds: fb.bounds, opacity: mix } : undefined };
+  const stats = fa?.stats;
+  const problem = fwdRun.failed ?? bwdRun.failed;
 
   /* ------------------------------------------------------ outline run */
   const [fwd, setFwd] = useState<OutlineStep[]>([]);
@@ -217,7 +209,7 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
   const [hover, setHover] = useState<Pt>();
 
   /* ---------------------------------------------------------- derived */
-  const d = useMemo(() => derive({ centre, fwd, bwd, coast, vessels: vessels ?? [], forcing, H }), [fwd, bwd, coast, vessels, forcing]);
+  const d = useMemo(() => derive({ centre, fwd, bwd, coast, vessels: vessels ?? [], forcing, H: 12 }), [fwd, bwd, coast, vessels, forcing]);
 
   /* -------------------------------------------------------- resizing */
   const [paneW, setPaneW] = useState(40);
@@ -232,17 +224,18 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
     window.addEventListener('pointerup', up);
   };
 
-  const display = backward ? -shownHour : shownHour;
-  const at = t0 + display * 3_600_000;
+  const display = t;
+  const at = t0 + t * 3_600_000;
+  const events = useMemo(() => timelineEvents(d, fwd, bwd), [d, fwd.length, bwd.length]);
 
   return (
     <div className="fc" ref={root} style={{ gridTemplateColumns: `minmax(0, 1fr) auto ${paneW}%` }}>
       <div className="fc-left">
         <div className="fc-map-wrap">
           <DriftMap
-            centre={centre} rings={rings} shown={shown} overlay={overlay} fwd={fwd} bwd={bwd} coast={coast} vessels={vessels ?? []} selected={selected}
-            onSelect={setSelected} landRings={landRings} vectorsAt={(lon, lat) => drift.current?.vectors(lon, lat) ?? null} forcing={forcing} backward={backward}
-            onHover={setHover} envelope={d.envelope} runId={runId}
+            centre={centre} rings={rings} shown={shown} overlay={overlay} fwd={fwd} bwd={bwd} coast={coast} vessels={d.top.map((r) => r.v)} selected={selected}
+            onSelect={setSelected} landRings={landRings} forcing={forcing} backward={backward}
+            onHover={setHover} envelope={d.envelope}
           />
           <div className="dm-overlay dm-legend fc-legend" data-open={layersOpen || undefined}>
             <header>
@@ -264,14 +257,13 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
             <span className={`fc-live-dot${playing ? ' is-on' : ''}`} />
             <b>{backward ? 'Backward source trace' : 'Forward drift simulation'}</b>
             <span className="num">{signed(display)}</span>
-            <span className="fc-heading-meta">{drift.current?.dx ?? 50} m grid · {forcing.measured ? 'measured forcing' : 'synthetic forcing'}</span>
+            <span className="fc-heading-meta">50 m grid · {forcing.measured ? 'measured forcing' : 'synthetic forcing'}</span>
           </div>
           <div className="dm-overlay fc-ramp">
             <span>Oil thickness</span>
             <i style={{ background: RAMP_CSS }} />
             <small><span>0.04 µm sheen</span><span>metallic</span><span>1 mm</span></small>
           </div>
-          <div className="dm-overlay dm-north" aria-hidden="true"><Navigation size={16} /><span>N</span></div>
           <div className="dm-overlay dm-readout num fc-readout">
             {hover ? (
               <>
@@ -282,13 +274,12 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
             ) : <span>Hover the chart for range, bearing and when oil reaches that spot</span>}
           </div>
         </div>
-        <TimeBar
-          direction={direction} setDirection={setDirection} H={H} head={head} shown={shownHour} at={at} playing={playing} speed={speed}
-          onPlay={() => { if (scrub !== undefined) setScrub(undefined); if (head >= H - 1e-6) setRunId((x) => x); setPlaying(!playing); }}
-          onRestart={() => { setScrub(0); }}
-          onLive={() => setScrub(undefined)}
-          onScrub={(v) => setScrub(v >= head - 0.01 ? undefined : v)}
-          setSpeed={setSpeed} fwdDone={outlineDone.forward}
+        <ForecastTimeline
+          t={t} t0={t0} fwdHead={fwdRun.headH} bwdHead={bwdRun.headH} playing={playing} speed={speed} setSpeed={setSpeed} events={events}
+          onPlay={() => { if ((backward && t <= -12 + 1e-6) || (!backward && t >= 24 - 1e-6)) seek(0); setPlaying(!playing); }}
+          onSeek={(v) => { seek(v); }}
+          direction={direction}
+          onDirection={(dir) => { setDirection(dir); seek(0); setPlaying(true); }}
         />
       </div>
       <div className="dm-grip is-x" role="separator" aria-orientation="vertical" aria-label="Resize the detail pane" onPointerDown={grab} />
@@ -343,17 +334,41 @@ function derive({ centre, fwd, bwd, coast, vessels, forcing, H }: { centre: Pt; 
 
   const srcHull = src?.hull ?? [];
   const inSource = (q: Pt) => (srcHull.length > 2 ? pointIn(q, srcHull as Pt[]) || kmBetween(q, src!.centre as Pt) < 3 : false);
-  const rows = vessels.map((v) => {
+  const rows0 = vessels.map((v) => {
     const now = vesselAt(v, 0);
     const pts = v.points.filter((q) => q.t <= 0 && q.t >= -H);
     const inside = pts.filter((q) => inSource([q.lon, q.lat]));
     const toSource = src ? Math.min(...(pts.length ? pts : [{ lon: now.at[0], lat: now.at[1], t: 0 }]).map((q) => kmBetween([q.lon, q.lat], src.centre as Pt))) : undefined;
     return { v, now, dist: kmBetween(now.at, centre), toSource, insideH: inside.length > 1 ? inside[inside.length - 1].t - inside[0].t : 0, firstSeen: v.points[0]?.t, lastSeen: v.points[v.points.length - 1]?.t };
-  }).sort((a, b) => (a.v.rank ?? 99) - (b.v.rank ?? 99) || a.dist - b.dist);
+  });
+  // Where each vessel came closest to the backward-traced oil, and when.
+  const traceAt = (h: number): Pt | undefined => {
+    const k = Math.floor(-h), f = -h - k;
+    const a = bwd.find((x) => x.hour === -k), b = bwd.find((x) => x.hour === -k - 1);
+    if (!a) return undefined;
+    return b ? [a.centre[0] + (b.centre[0] - a.centre[0]) * f, a.centre[1] + (b.centre[1] - a.centre[1]) * f] : (a.centre as Pt);
+  };
+  const scored = rows0.map((r) => {
+    let pass: { h: number; km: number } | undefined;
+    for (let h = 0; h >= -12; h -= 0.25) {
+      const c = traceAt(h);
+      if (!c) continue;
+      const km = kmBetween(vesselAt(r.v, h).at, c);
+      if (!pass || km < pass.km) pass = { h, km };
+    }
+    const gapIn = r.v.gaps.some(([g0, g1]) => g1 >= -12 && g0 <= 0);
+    const tanker = r.v.kind === 'tanker' || r.v.kind === 'gas';
+    // ponytail: hand-weighted blend of the ranker's score and the trace; a calibrated model would replace it.
+    const raw = 0.45 * (r.v.score ?? 0.15) + 0.35 * Math.exp(-(pass?.km ?? r.dist) / 5) + (r.insideH ? 0.1 : 0) + (gapIn ? 0.06 : 0) + (tanker ? 0.04 : 0);
+    return { ...r, pass, raw };
+  });
+  const total = scored.reduce((s, r) => s + r.raw, 0) || 1;
+  const ranked = scored.map((r) => ({ ...r, prob: r.raw / total })).sort((a, b) => b.prob - a.prob);
+  const top = ranked.slice(0, 5);
 
   const risk: 'High' | 'Medium' | 'Low' = firstShore !== undefined && firstShore <= 12 ? 'High' : firstShore !== undefined ? 'Medium' : 'Low';
   const windage = forcing.windSpeed * 0.03;
-  return { step, last, driftKm, driftBearing, driftMs, envelope, envelopeKm2, src, sourceKm, sourceBearing, bands, firstShore, firstAt, hit, towns, receptors, sites, rows, risk, windage, centre };
+  return { step, last, driftKm, driftBearing, driftMs, envelope, envelopeKm2, src, sourceKm, sourceBearing, bands, firstShore, firstAt, hit, towns, receptors, sites, rows: ranked, top, total: vessels.length, risk, windage, centre };
 }
 
 function reachAt(fwd: OutlineStep[], q: Pt) {
@@ -391,23 +406,33 @@ function polyKm2(ring: LonLat[]) {
 
 /* ====================================================================== map */
 
+/** Draws one stored frame into a canvas of its own, so two overlays can pass frames between them. */
 class CanvasOverlay extends L.Layer {
   private m?: L.Map;
-  private el?: HTMLCanvasElement;
+  private readonly el = document.createElement('canvas');
+  private src?: HTMLCanvasElement;
   private b = L.latLngBounds([0, 0], [0, 0]);
-  onAdd(map: L.Map) { this.m = map; map.on('move zoom resize', this.update, this); if (this.el) map.getPanes().overlayPane.appendChild(this.el); this.update(); return this; }
-  onRemove(map: L.Map) { map.off('move zoom resize', this.update, this); this.el?.remove(); this.m = undefined; return this; }
-  set(canvas: HTMLCanvasElement | undefined, bounds?: [number, number, number, number]) {
-    if (canvas !== this.el) {
-      this.el?.remove();
-      this.el = canvas;
-      if (canvas) { Object.assign(canvas.style, { position: 'absolute', pointerEvents: 'none', zIndex: '420' }); this.m?.getPanes().overlayPane.appendChild(canvas); }
+  constructor() {
+    super();
+    Object.assign(this.el.style, { position: 'absolute', pointerEvents: 'none', zIndex: '420' });
+  }
+  onAdd(map: L.Map) { this.m = map; map.on('move zoom resize', this.update, this); map.getPanes().overlayPane.appendChild(this.el); this.update(); return this; }
+  onRemove(map: L.Map) { map.off('move zoom resize', this.update, this); this.el.remove(); this.m = undefined; return this; }
+  set(canvas: HTMLCanvasElement | undefined, bounds?: [number, number, number, number], opacity = 1) {
+    this.el.style.display = canvas ? '' : 'none';
+    this.el.style.opacity = String(opacity);
+    if (canvas && canvas !== this.src) {
+      if (this.el.width !== canvas.width || this.el.height !== canvas.height) { this.el.width = canvas.width; this.el.height = canvas.height; }
+      const ctx = this.el.getContext('2d')!;
+      ctx.clearRect(0, 0, this.el.width, this.el.height);
+      ctx.drawImage(canvas, 0, 0);
     }
+    this.src = canvas;
     if (bounds) this.b = L.latLngBounds([bounds[1], bounds[0]], [bounds[3], bounds[2]]);
     this.update();
   }
   private update = () => {
-    if (!this.m || !this.el) return;
+    if (!this.m) return;
     const nw = this.m.latLngToLayerPoint(this.b.getNorthWest());
     const se = this.m.latLngToLayerPoint(this.b.getSouthEast());
     this.el.style.transform = `translate3d(${nw.x}px, ${nw.y}px, 0)`;
@@ -417,16 +442,17 @@ class CanvasOverlay extends L.Layer {
 }
 
 function DriftMap({
-  centre, rings, shown, overlay, fwd, bwd, coast, vessels, selected, onSelect, landRings, vectorsAt, forcing, backward, onHover, envelope, runId,
+  centre, rings, shown, overlay, fwd, bwd, coast, vessels, selected, onSelect, landRings, forcing, backward, onHover, envelope,
 }: {
-  centre: Pt; rings: number[][][]; shown: Set<LayerKey>; overlay?: { canvas: HTMLCanvasElement; bounds: [number, number, number, number] };
+  centre: Pt; rings: number[][][]; shown: Set<LayerKey>; overlay: Record<'a' | 'b', { canvas: HTMLCanvasElement; bounds: [number, number, number, number]; opacity: number } | undefined>;
   fwd: OutlineStep[]; bwd: OutlineStep[]; coast: CoastPoint[]; vessels: MapVessel[]; selected?: string; onSelect: (id?: string) => void;
-  landRings?: LonLat[][]; vectorsAt: (lon: number, lat: number) => { wind: [number, number]; current: [number, number] } | null; forcing: Forcing;
-  backward: boolean; onHover: (p?: Pt) => void; envelope: LonLat[]; runId: number;
+  landRings?: LonLat[][]; forcing: Forcing;
+  backward: boolean; onHover: (p?: Pt) => void; envelope: LonLat[];
 }) {
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | undefined>(undefined);
-  const oil = useRef(new CanvasOverlay());
+  const oilA = useRef(new CanvasOverlay());
+  const oilB = useRef(new CanvasOverlay());
   const statics = useRef<L.LayerGroup | undefined>(undefined);
   const vectors = useRef<L.LayerGroup | undefined>(undefined);
   const [moved, setMoved] = useState(0);
@@ -441,7 +467,8 @@ function DriftMap({
     m.on('mousemove', (e) => onHover([e.latlng.lng, e.latlng.lat]));
     m.on('mouseout', () => onHover(undefined));
     m.on('moveend', () => setMoved((x) => x + 1));
-    oil.current.addTo(m);
+    oilA.current.addTo(m);
+    oilB.current.addTo(m);
     map.current = m;
     const ro = new ResizeObserver(() => m.invalidateSize());
     ro.observe(host.current!);
@@ -463,7 +490,11 @@ function DriftMap({
   useEffect(() => { if (firstDir.current) { firstDir.current = false; return; } fit('forecast'); }, [backward]);
 
   // The live field.
-  useEffect(() => { oil.current.set(shown.has('live') ? overlay?.canvas : undefined, overlay?.bounds); });
+  useEffect(() => {
+    const on = shown.has('live');
+    oilA.current.set(on ? overlay.a?.canvas : undefined, overlay.a?.bounds, overlay.a?.opacity);
+    oilB.current.set(on ? overlay.b?.canvas : undefined, overlay.b?.bounds, overlay.b?.opacity);
+  });
 
   // Everything else.
   useEffect(() => {
@@ -559,8 +590,10 @@ function DriftMap({
       const off = kind === 'current' ? stepPx / 2 : 0;
       for (let y = 70 + off / 2; y < size.y - 40; y += stepPx) for (let x = 30 + off; x < size.x; x += stepPx) {
         const at = m.containerPointToLatLng([x, y]);
-        const s = vectorsAt(at.lng, at.lat);
-        const [u, v] = s ? s[kind] : base(kind);
+        // ponytail: the run's mean forcing; the solver's eddies live in the worker, not here.
+        const wob = Math.sin(at.lat * 40 + at.lng * 31) * 0.12;
+        const [bu, bv] = base(kind);
+        const u = bu * Math.cos(wob) - bv * Math.sin(wob), v = bu * Math.sin(wob) + bv * Math.cos(wob);
         const mag = Math.hypot(u, v);
         if (mag < 1e-4) continue;
         const len = 21, dx = (u / mag) * len, dy = (-v / mag) * len;
@@ -575,7 +608,7 @@ function DriftMap({
         }
       }
     }
-  }, [shown, moved, forcing, backward, runId]);
+  }, [shown, moved, forcing, backward]);
 
   return (
     <>
@@ -588,39 +621,178 @@ function DriftMap({
   );
 }
 
-/* ================================================================= time bar */
+/* ================================================================ live runs */
 
-function TimeBar({ direction, setDirection, H, head, shown, at, playing, speed, onPlay, onRestart, onLive, onScrub, setSpeed, fwdDone }: {
-  direction: ForecastDirection; setDirection: (d: ForecastDirection) => void; H: number; head: number; shown: number; at: number; playing: boolean; speed: number;
-  onPlay: () => void; onRestart: () => void; onLive: () => void; onScrub: (v: number) => void; setSpeed: (s: number) => void; fwdDone: boolean;
+interface Frame { hour: number; canvas?: HTMLCanvasElement; bounds: [number, number, number, number]; stats: LiveStats }
+
+/** One live run in a worker; frames land in a ref (canvases are not state) and the head is state. */
+function useLiveRun(rings: LonLat[][], volumeM3: number, forcing: Forcing, backward: boolean, hours: number, key: string) {
+  const frames = useRef<Frame[]>([]);
+  const head = useRef(0);
+  const [headH, setHeadH] = useState(0);
+  const [failed, setFailed] = useState<string>();
+  useEffect(() => {
+    frames.current = [];
+    head.current = 0;
+    setHeadH(0);
+    setFailed(undefined);
+    if (!rings.length || volumeM3 <= 0) return;
+    const w = new Worker(new URL('../../../forecast/live.worker.ts', import.meta.url), { type: 'module' });
+    w.onmessage = (e: MessageEvent<LiveMessage>) => {
+      const m = e.data;
+      if (m.kind === 'failed') { setFailed(m.detail); return; }
+      if (m.kind !== 'frame') return;
+      const f: LiveFrame = m.frame;
+      let canvas: HTMLCanvasElement | undefined;
+      if (f.width) {
+        canvas = document.createElement('canvas');
+        canvas.width = f.width;
+        canvas.height = f.height;
+        canvas.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(f.pixels), f.width, f.height), 0, 0);
+      }
+      frames.current.push({ hour: f.hour, canvas, bounds: f.bounds, stats: f.stats });
+      head.current = f.hour;
+      setHeadH(f.hour);
+    };
+    w.postMessage({ rings, volumeM3, forcing, backward, hours } satisfies LiveRequest);
+    return () => w.terminate();
+  }, [key, rings.length]);
+  return { frames, head, headH, failed };
+}
+
+/* ================================================================== events */
+
+type Tone = 'observed' | 'predicted' | 'reconstructed' | 'critical' | 'warning';
+interface TlEvent { h: number; label: string; detail: string; tone: Tone; primary?: boolean; to?: number; quiet?: boolean }
+
+function timelineEvents(d: Derived, fwd: OutlineStep[], bwd: OutlineStep[]): TlEvent[] {
+  const out: TlEvent[] = [{ h: 0, label: 'Detected', detail: 'Satellite pass, slick outlined', tone: 'observed', primary: true }];
+  for (const hr of STEP_HOURS) {
+    const s = fwd.find((x) => x.hour === hr);
+    if (s) out.push({ h: hr, label: `+${hr} h outline`, detail: `${f1(s.areaKm2)} km², ${f1(kmBetween(d.centre, s.centre as Pt))} km from the slick`, tone: 'predicted' });
+  }
+  if (d.firstShore !== undefined) {
+    const town = d.towns.find((t) => t.first === d.firstShore);
+    out.push({ h: d.firstShore, label: 'Oil reaches coast', detail: town ? `First landfall near ${town.name}` : 'First landfall', tone: 'critical' });
+  }
+  for (const t of d.towns.filter((x) => x.first !== undefined && x.first !== d.firstShore).slice(0, 3)) {
+    out.push({ h: t.first!, label: `Reaches ${t.name}`, detail: `${f1(t.coastKm)} km of shore near ${t.name}`, tone: 'critical' });
+  }
+  for (const r of d.receptors.filter((x) => x.first !== undefined).slice(0, 2)) {
+    out.push({ h: r.first!, label: `Reaches ${r.name}`, detail: r.kind, tone: 'warning' });
+  }
+  const evap = fwd.find((s) => s.hour > 0 && s.evaporated / Math.max(s.released, 1e-9) >= 0.25);
+  if (evap) out.push({ h: evap.hour, label: '¼ evaporated', detail: 'A quarter of the released oil has evaporated', tone: 'predicted' });
+  const stranded = fwd.find((s) => s.stranded / Math.max(s.released, 1e-9) >= 0.05);
+  if (stranded) out.push({ h: stranded.hour, label: '5 % ashore', detail: 'One twentieth of the oil is stranded', tone: 'critical' });
+
+  const src = bwd[bwd.length - 1];
+  if (src && src.hour <= -12) out.push({ h: -12, label: 'Earliest trace', detail: `${f1(d.sourceKm ?? 0)} km ${COMPASS(d.sourceBearing ?? 0)} of the slick`, tone: 'reconstructed' });
+  // Where the top candidates came closest to the backward track: the likely release moments.
+  d.top.slice(0, 3).forEach((r, k) => {
+    if (r.pass === undefined) return;
+    out.push({ h: r.pass.h, quiet: k > 0, label: k === 0 ? `Possible release · ${r.v.name}` : `Closest pass · ${r.v.name}`, detail: `${f1(r.pass.km)} km from the traced oil · ${Math.round(r.prob * 100)} % of attribution`, tone: k === 0 ? 'critical' : 'reconstructed', primary: k === 0, to: k === 0 ? Math.min(0, r.pass.h + 1) : undefined });
+  });
+  for (const r of d.top.slice(0, 3)) for (const [g0, g1] of r.v.gaps) {
+    if (g1 < -12 || g0 > 0) continue;
+    out.push({ h: Math.max(-12, g0), to: Math.min(0, g1), label: `AIS silent · ${r.v.name}`, detail: `${Math.round((g1 - g0) * 60)} min without a position`, tone: 'warning' });
+  }
+  return out.sort((a, b) => a.h - b.h);
+}
+
+/* ================================================================ timeline */
+
+const T_MIN = -12, T_MAX = 24, SPAN = T_MAX - T_MIN;
+const pct = (h: number) => ((h - T_MIN) / SPAN) * 100;
+const clockOf = (ms: number) => new Date(ms).toISOString().slice(11, 16);
+const dayOf = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+
+function ForecastTimeline({ t, t0, fwdHead, bwdHead, playing, speed, setSpeed, events, onPlay, onSeek, direction, onDirection }: {
+  t: number; t0: number; fwdHead: number; bwdHead: number; playing: boolean; speed: number; setSpeed: (s: number) => void; events: TlEvent[];
+  onPlay: () => void; onSeek: (h: number) => void; direction: ForecastDirection; onDirection: (d: ForecastDirection) => void;
 }) {
-  const back = direction === 'backward';
-  const ticks = back ? [0, 3, 6, 9, 12] : [0, 3, 6, 9, 12, 15, 18, 21, 24];
+  const track = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(900);
+  useEffect(() => {
+    const ro = new ResizeObserver(([e]) => setWidth(e.contentRect.width));
+    if (track.current) ro.observe(track.current);
+    return () => ro.disconnect();
+  }, []);
+  const scrub = (x: number) => {
+    const r = track.current!.getBoundingClientRect();
+    const h = T_MIN + Math.max(0, Math.min(1, (x - r.left) / r.width)) * SPAN;
+    // Only as far as each run has computed.
+    onSeek(Math.max(-bwdHead, Math.min(fwdHead, h)));
+  };
+  // Labels in lanes so none overlaps its neighbour.
+  const lanes: number[] = [];
+  const placed = events.map((e) => {
+    const x = (pct(e.h) / 100) * width;
+    if (e.quiet) return { ...e, lane: 0, flip: false };
+    const w = e.label.length * 6.2 + 18;
+    let lane = lanes.findIndex((end) => end < x - 4);
+    if (lane === -1) { lane = lanes.length; lanes.push(0); }
+    lanes[lane] = x + w;
+    return { ...e, lane: Math.min(lane, 3), flip: x + w > width };
+  });
+  const ticks = Array.from({ length: SPAN / 3 + 1 }, (_, k) => T_MIN + k * 3);
+  const at = t0 + t * 3_600_000;
   return (
-    <section className="fc-time" aria-label="Run clock">
-      <div className="fc-dir" role="group" aria-label="Direction">
-        <button type="button" aria-pressed={!back} onClick={() => setDirection('forward')}>Forward 24 h</button>
-        <button type="button" aria-pressed={back} onClick={() => setDirection('backward')}>Backward 12 h</button>
-      </div>
-      <button type="button" className="fc-icon" onClick={onRestart} aria-label="Back to the detection"><RotateCcw size={15} /></button>
-      <button type="button" className="fc-play" onClick={onPlay} aria-label={playing ? 'Pause' : 'Play'}>{playing ? <Pause size={17} /> : <Play size={17} />}</button>
-      <div className="fc-when">
-        <b className="num">{when.format(at).split(', ').at(-1)} <small>UTC</small></b>
-        <span className="num">{new Date(at).toUTCString().slice(0, 11)} · {signed(back ? -shown : shown)}</span>
-      </div>
-      <div className="fc-track-wrap">
-        <div className="fc-scale" style={{ direction: back ? 'rtl' : undefined }}>
-          <i className="fc-computed" style={{ width: `${(head / H) * 100}%` }} />
-          <input type="range" min={0} max={H} step={0.05} value={shown} onChange={(e) => onScrub(Math.min(head, Number(e.target.value)))} aria-label="Model time" />
+    <footer className="tl fc-tl">
+      <div className="tl-bar">
+        <div className="fc-dir" role="group" aria-label="Direction">
+          <button type="button" aria-pressed={direction === 'backward'} onClick={() => onDirection('backward')}>Backward 12 h</button>
+          <button type="button" aria-pressed={direction === 'forward'} onClick={() => onDirection('forward')}>Forward 24 h</button>
         </div>
-        <div className="fc-ticks num" style={{ flexDirection: back ? 'row-reverse' : 'row' }}>{ticks.map((t) => <span key={t} data-step={!back && STEP_HOURS.includes(t) || undefined}>{back ? `−${t}` : `+${t}`} h</span>)}</div>
+        <div className="tl-transport">
+          <button type="button" className="fc-icon" onClick={() => onSeek(Math.max(-bwdHead, t - 1))} aria-label="Back 1 h"><SkipBack size={14} /></button>
+          <button type="button" className="tl-play" onClick={onPlay} aria-label={playing ? 'Pause' : 'Play'}>{playing ? <Pause size={15} /> : <Play size={15} />}</button>
+          <button type="button" className="fc-icon" onClick={() => onSeek(Math.min(fwdHead, t + 1))} aria-label="Forward 1 h"><SkipForward size={14} /></button>
+        </div>
+        <div className="fc-tl-legend">
+          <span><i className="is-recon" />Reconstruction</span>
+          <span><i className="is-obs" />Detection</span>
+          <span><i className="is-pred" />Forecast</span>
+          <span><i className="is-crit" />Impact / release</span>
+          <em className="num">{events.length} events</em>
+        </div>
+        <div className="fc-speeds" role="group" aria-label="Speed">
+          {SPEEDS.map(([s, label]) => <button key={s} type="button" aria-pressed={speed === s} onClick={() => setSpeed(s)} title={`${s / 60} model-minutes per second`}>{label}</button>)}
+        </div>
       </div>
-      <div className="fc-speeds" role="group" aria-label="Speed">
-        {SPEEDS.map(([s, label]) => <button key={s} type="button" aria-pressed={speed === s} onClick={() => setSpeed(s)}>{label}</button>)}
+      <div className="tl-rail">
+        <div className="fc-tl-now">
+          <b className="num">{t === 0 ? 'T0' : signed(t)}</b>
+          <span className="num">{clockOf(at)} <small>UTC</small></span>
+          <span>{dayOf.format(at)}</span>
+        </div>
+        <div
+          ref={track}
+          className="tl-track fc-tl-track"
+          role="slider" tabIndex={0} aria-label="Model time" aria-valuemin={T_MIN} aria-valuemax={T_MAX} aria-valuenow={t} aria-valuetext={signed(t)}
+          onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); scrub(e.clientX); }}
+          onPointerMove={(e) => e.buttons === 1 && scrub(e.clientX)}
+          onKeyDown={(e) => { if (e.key === 'ArrowLeft') onSeek(Math.max(-bwdHead, t - 0.25)); if (e.key === 'ArrowRight') onSeek(Math.min(fwdHead, t + 0.25)); if (e.key === ' ') { e.preventDefault(); onPlay(); } }}
+        >
+          <span className="fc-zone is-recon" style={{ left: 0, width: `${pct(0)}%` }} />
+          <span className="fc-zone is-pred" style={{ left: `${pct(0)}%`, right: 0 }} />
+          <span className="fc-done is-recon" style={{ left: `${pct(-Math.min(12, bwdHead))}%`, width: `${pct(0) - pct(-Math.min(12, bwdHead))}%` }} />
+          <span className="fc-done is-pred" style={{ left: `${pct(0)}%`, width: `${pct(Math.min(24, fwdHead)) - pct(0)}%` }} />
+          {ticks.map((h) => <span key={h} className={`tl-tick${h % 6 === 0 ? ' is-labelled' : ''}`} style={{ left: `${pct(h)}%` }}>{h % 6 === 0 && <span className={`tl-tick-label num${h === T_MAX ? ' is-end' : ''}`}>{h === 0 ? 'T0' : `${h > 0 ? '+' : '−'}${Math.abs(h)} h`}</span>}</span>)}
+          {placed.filter((e) => e.to !== undefined).map((e, k) => <span key={`b${k}`} className={`fc-band is-${e.tone}`} style={{ left: `${pct(e.h)}%`, width: `${Math.max(0.4, pct(e.to!) - pct(e.h))}%` }} title={`${e.label}: ${e.detail}`} />)}
+          {placed.map((e, k) => (
+            <button
+              key={k} type="button" className={`fc-ev is-${e.tone}${e.primary ? ' is-primary' : ''}${e.flip ? ' is-flip' : ''}${e.quiet ? ' is-quiet' : ''}`} data-lane={e.lane}
+              style={{ left: `${pct(e.h)}%` }} title={`${signed(e.h)} · ${e.label}\n${e.detail}`}
+              onPointerDown={(ev) => ev.stopPropagation()} onClick={() => onSeek(Math.max(-bwdHead, Math.min(fwdHead, e.h)))}
+            >
+              <i />{!e.quiet && <span>{e.label}</span>}
+            </button>
+          ))}
+          <span className="tl-cursor" style={{ left: `${pct(t)}%` }} />
+        </div>
       </div>
-      {shown < head - 0.01 && <button type="button" className="fc-live" onClick={onLive}>Live</button>}
-      {!back && !fwdDone && <span className="fc-pending">horizon run…</span>}
-    </section>
+    </footer>
   );
 }
 
@@ -947,24 +1119,38 @@ function ImpactPane({ d, outlineDone, setPage }: { d: Derived; outlineDone: bool
 
 function VesselPane({ d, vessels, selected, setSelected, t0 }: { d: Derived; vessels?: MapVessel[]; selected?: string; setSelected: (id?: string) => void; t0: number }) {
   if (!vessels) return <p className="dm-loading">Loading AIS…</p>;
-  const nearSrc = d.rows.filter((r) => r.toSource !== undefined && r.toSource < 25);
-  const cands = d.rows.filter((r) => r.v.rank && r.v.rank <= 3);
-  const focus = d.rows.find((r) => r.v.id === selected) ?? [...d.rows].sort((a, b) => (a.toSource ?? a.dist) - (b.toSource ?? b.dist))[0];
-  const conf = Math.round((focus?.v.score ?? 0.5) * 100);
+  const focus = d.top.find((r) => r.v.id === selected) ?? d.top[0];
+  const topShare = d.top.reduce((s, r) => s + r.prob, 0);
+  const conf = Math.round((focus?.prob ?? 0) * 100);
   return (
     <>
       <section className="dm-card dm-hero">
         <div>
-          <h2>Vessels and the source region</h2>
-          <p>{vessels.length} vessels on AIS; {nearSrc.length} passed within 25 km of the backward run's source region in the 12 h before the pass.</p>
+          <h2>Most likely sources</h2>
+          <p>The five vessels most likely to have caused this slick, of {d.total} on AIS. Ranked by the pipeline's score, how close each came to the backward-traced oil, time inside the source region, AIS silences and vessel type.</p>
         </div>
-        <Badge claim="observed">AIS</Badge>
+        <Badge claim="reconstructed">Ranked</Badge>
       </section>
       <section className="dm-tiles">
-        <Tile label="Vessels in scene" value={String(vessels.length)} />
-        <Tile label="Near source region" value={String(nearSrc.length)} note="≤ 25 km, last 12 h" tone={nearSrc.length ? 'warning' : undefined} />
-        <Tile label="Candidates" value={String(cands.length)} note="ranked" />
-        <Tile label="Closest now" value={d.rows[0] ? f1(Math.min(...d.rows.map((r) => r.dist))) : '—'} unit="km" note={[...d.rows].sort((a, b) => a.dist - b.dist)[0]?.v.name} />
+        <Tile label="Top 5 share" value={String(Math.round(topShare * 100))} unit="%" note={`of attribution across ${d.total} vessels`} />
+        <Tile label="Leading" value={d.top[0] ? String(Math.round(d.top[0].prob * 100)) : '—'} unit="%" note={d.top[0]?.v.name} tone="warning" />
+        <Tile label="Closest pass" value={d.top[0]?.pass ? f1(d.top[0].pass.km) : '—'} unit="km" note={d.top[0]?.pass ? `at ${signed(d.top[0].pass.h)}` : undefined} />
+        <Tile label="AIS silences" value={String(d.top.filter((r) => r.v.gaps.some(([a, b]) => b >= -12 && a <= 0)).length)} note="in the last 12 h" tone={d.top.some((r) => r.v.gaps.length) ? 'critical' : undefined} />
+      </section>
+
+      <section className="dm-card">
+        <header className="dm-head"><h3><Target size={15} />Attribution probability</h3><span className="dm-meta">share among all {d.total} vessels</span></header>
+        <ol className="fc-prob">
+          {d.top.map((r, i) => (
+            <li key={r.v.id} aria-selected={r.v.id === focus?.v.id} onClick={() => setSelected(r.v.id === selected ? undefined : r.v.id)}>
+              <b className="num">{i + 1}</b>
+              <span className="dm-vname"><i className={`dm-dot is-${tone(r.v)}`} /><b>{r.v.name}</b><small>{r.v.type} · {r.v.flag}</small></span>
+              <span className="fc-prob-bar"><i style={{ transform: `scaleX(${r.prob / d.top[0].prob})` }} /></span>
+              <b className="num">{Math.round(r.prob * 100)} %</b>
+              <small className="num">{r.pass ? `${f1(r.pass.km)} km at ${signed(r.pass.h)}` : '—'}</small>
+            </li>
+          ))}
+        </ol>
       </section>
 
       {focus && (
@@ -972,11 +1158,11 @@ function VesselPane({ d, vessels, selected, setSelected, t0 }: { d: Derived; ves
           <section className="dm-card">
             <header className="dm-head"><h3><Ship size={15} />{focus.v.name}</h3><span className="dm-meta">{focus.v.type}</span></header>
             <dl className="dm-rows">
-              <div><dt>First seen</dt><dd className="num">{when.format(t0 + (focus.firstSeen ?? 0) * 3_600_000)} UTC</dd></div>
-              <div><dt>Last seen</dt><dd className="num">{when.format(t0 + (focus.lastSeen ?? 0) * 3_600_000)} UTC</dd></div>
+              <div><dt>Closest to trace</dt><dd className="num">{focus.pass ? `${f1(focus.pass.km)} km at ${signed(focus.pass.h)}` : '—'}</dd></div>
+              <div><dt>At</dt><dd className="num">{focus.pass ? `${when.format(t0 + focus.pass.h * 3_600_000)} UTC` : '—'}</dd></div>
               <div><dt>In source region</dt><dd className="num">{focus.insideH ? `${f1(focus.insideH)} h` : '—'}</dd></div>
-              <div><dt>To source region</dt><dd className="num">{focus.toSource !== undefined ? `${f1(focus.toSource)} km` : '—'}</dd></div>
-              <div><dt>Speed · course</dt><dd className="num">{f1(focus.now.knots)} kn · {Math.round(focus.now.heading)}°</dd></div>
+              <div><dt>AIS silences</dt><dd className="num">{focus.v.gaps.length ? focus.v.gaps.map(([a, b]) => `${signed(a)} for ${Math.round((b - a) * 60)} min`).join(', ') : 'none'}</dd></div>
+              <div><dt>Speed · course now</dt><dd className="num">{f1(focus.now.knots)} kn · {Math.round(focus.now.heading)}°</dd></div>
               <div><dt>MMSI · IMO</dt><dd className="num">{focus.v.mmsi} · {focus.v.imo}</dd></div>
             </dl>
           </section>
@@ -986,32 +1172,10 @@ function VesselPane({ d, vessels, selected, setSelected, t0 }: { d: Derived; ves
               <svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" className="bg" /><circle cx="22" cy="22" r="18" className="fg" strokeDasharray={`${(conf / 100) * 113} 113`} /></svg>
               <b className="num">{conf} %</b>
             </div>
-            <p className="fc-note">{focus.v.why ?? `${focus.v.name} ${focus.insideH ? `spent ${f1(focus.insideH)} h inside the source region` : `passed ${f1(focus.toSource ?? focus.dist)} km from the source region`} during the likely release window.`} Alternative sources cannot be excluded.</p>
+            <p className="fc-note">{focus.v.why ?? `${focus.v.name} came within ${f1(focus.pass?.km ?? focus.dist)} km of the traced oil${focus.pass ? ` at ${signed(focus.pass.h)}` : ''}.`} Alternative sources cannot be excluded.</p>
           </section>
         </div>
       )}
-
-      <section className="dm-card">
-        <header className="dm-head"><h3><Crosshair size={15} />All vessels</h3><span className="dm-meta">select to highlight</span></header>
-        <div className="dm-table-wrap fc-tablewrap">
-          <table className="dm-table">
-            <thead><tr><th>#</th><th>Vessel</th><th className="is-num">Now km</th><th className="is-num">To source</th><th className="is-num">In region</th><th className="is-num">SOG</th><th className="is-num">Score</th></tr></thead>
-            <tbody>
-              {d.rows.map((r, i) => (
-                <tr key={r.v.id} aria-selected={r.v.id === selected} onClick={() => setSelected(r.v.id === selected ? undefined : r.v.id)}>
-                  <td className="num">{r.v.rank ?? i + 1}</td>
-                  <td><span className="dm-vname"><i className={`dm-dot is-${tone(r.v)}`} /><b>{r.v.name}</b><small>{r.v.type}</small></span></td>
-                  <td className="is-num">{f1(r.dist)}</td>
-                  <td className="is-num">{r.toSource !== undefined ? f1(r.toSource) : '—'}</td>
-                  <td className="is-num">{r.insideH ? `${f1(r.insideH)} h` : '—'}</td>
-                  <td className="is-num">{f1(r.now.knots)}</td>
-                  <td className="is-num">{r.v.score !== undefined ? r.v.score.toFixed(3) : '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
     </>
   );
 }

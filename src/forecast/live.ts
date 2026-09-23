@@ -1,11 +1,11 @@
 /**
- * The Slick Drift Lab's live run, as a class the Forecast page drives.
+ * The Slick Drift Lab's live run: shared settings and the compositor.
  *
  * Ported from oil-imp's `main.ts`: the same GlobeMaster settings, the same
  * resolution rule, the same continuous Bonn ramp composited block by block
- * into one canvas, stepped on the main thread inside a per-frame budget.
- * What it adds is memory: a copy of the field every half hour of model time,
- * so the clock can scrub back through what has already been computed.
+ * into one image. `live.worker.ts` steps it off the main thread and posts a
+ * frame every few model-minutes; the page blends between frames, so the oil
+ * moves smoothly whatever the solver's step costs.
  *
  * Backward runs are the same solver with the forcing reversed (wind turned
  * 180°, current negated). That is an approximation of an inverse run — the
@@ -78,94 +78,41 @@ export function ringArea(ring: LonLat[]) {
   return Math.abs(twice) / 2;
 }
 
-export interface Snapshot { hour: number; canvas: HTMLCanvasElement; bounds: [number, number, number, number] }
 export interface LiveStats { hour: number; areaKm2: number; released: number; afloat: number; evaporated: number; dispersed: number; stranded: number; blocks: number }
+export interface LiveFrame { hour: number; width: number; height: number; bounds: [number, number, number, number]; pixels: Uint8ClampedArray; stats: LiveStats }
 
-export class LiveDrift {
-  readonly canvas = document.createElement('canvas');
-  bounds: [number, number, number, number] | undefined;
-  readonly snapshots: Snapshot[] = [];
-  private readonly ctx: CanvasRenderingContext2D;
-  private globe: GlobeMaster;
-  private field = new Float32Array(0);
-  problem: string | null = null;
+export function statsOf(g: GlobeMaster): LiveStats {
+  const b = g.budget();
+  const m = g.measure(DISPLAY_SHEEN_M);
+  return { hour: g.t / 3600, areaKm2: m.areaM2 / 1e6, released: b.released, afloat: m.volume, evaporated: b.evaporated, dispersed: b.dispersed, stranded: b.stranded, blocks: g.blockCount };
+}
 
-  constructor(rings: LonLat[][], volumeM3: number, forcing: Forcing, readonly backward: boolean, land: LonLat[][], readonly dx = 50) {
-    this.ctx = this.canvas.getContext('2d', { alpha: true })!;
-    this.globe = new GlobeMaster(solverFor(dx));
-    applyForcing(this.globe, forcing, backward);
-    this.globe.setLand(land);
-    this.problem = release(this.globe, rings, volumeM3);
-    this.render();
-    this.keep();
-  }
-
-  get hour() { return this.globe.t / 3600; }
-
-  setLand(land: LonLat[][]) { this.globe.setLand(land); }
-
-  vectors(lon: number, lat: number) { return this.globe.vectorsAt(lon, lat); }
-
-  /** Advances by up to `seconds` of model time within `budgetMs` of wall time. */
-  step(seconds: number, budgetMs = 10) {
-    const deadline = performance.now() + budgetMs;
-    const slice = this.dx <= 25 ? 4 : 12;
-    let left = seconds;
-    while (left > 1e-6 && performance.now() < deadline) {
-      const before = this.globe.t;
-      this.globe.step(Math.min(slice, left));
-      const moved = this.globe.t - before;
-      if (moved <= 0) break;
-      left -= moved;
-      if (Math.floor(this.globe.t / 1800) !== Math.floor(before / 1800)) { this.render(); this.keep(); }
+/** oil-imp's compositeBlocks: every block's thickness, lightly smoothed, into one RGBA image. No DOM, so it runs in a worker. */
+export function composite(g: GlobeMaster): Omit<LiveFrame, 'hour' | 'stats'> | undefined {
+  const view = g.view(true, null, false);
+  const blocks: GlobeBlock[] = view.blocks;
+  if (!blocks.length) return undefined;
+  const B = view.B;
+  const minBi = Math.min(...blocks.map((b) => b.bi)), maxBi = Math.max(...blocks.map((b) => b.bi));
+  const minBj = Math.min(...blocks.map((b) => b.bj)), maxBj = Math.max(...blocks.map((b) => b.bj));
+  const width = (maxBi - minBi + 1) * B, height = (maxBj - minBj + 1) * B;
+  const pixels = new Uint8ClampedArray(width * height * 4);
+  const row = B + 2;
+  const f = new Float32Array(row * row);
+  const dx = g.solver.dx;
+  const blend = dx >= 50 ? 0.22 : 0.14;
+  let west = Infinity, east = -Infinity, south = Infinity, north = -Infinity;
+  for (const block of blocks) {
+    for (const [lon, lat] of block.corners) { west = Math.min(west, lon); east = Math.max(east, lon); south = Math.min(south, lat); north = Math.max(north, lat); }
+    g.blockThickness(block, f);
+    for (let j = 0; j < B; j++) for (let i = 0; i < B; i++) {
+      const c = f[(j + 1) * row + i + 1];
+      const n = f[j * row + i] + f[j * row + i + 1] + f[j * row + i + 2] + f[(j + 1) * row + i] + f[(j + 1) * row + i + 2] + f[(j + 2) * row + i] + f[(j + 2) * row + i + 1] + f[(j + 2) * row + i + 2];
+      const [r, gg, b, a] = colour(dx <= 10 ? c : c * (1 - blend) + (n / 8) * blend);
+      // Solver rows run north; image rows run south.
+      const o = ((maxBj - block.bj) * B + (B - 1 - j)) * width * 4 + ((block.bi - minBi) * B + i) * 4;
+      pixels[o] = r; pixels[o + 1] = gg; pixels[o + 2] = b; pixels[o + 3] = a;
     }
-    this.render();
   }
-
-  stats(): LiveStats {
-    const b = this.globe.budget();
-    const m = this.globe.measure(DISPLAY_SHEEN_M);
-    return { hour: this.hour, areaKm2: m.areaM2 / 1e6, released: b.released, afloat: m.volume, evaporated: b.evaporated, dispersed: b.dispersed, stranded: b.stranded, blocks: this.globe.blockCount };
-  }
-
-  private keep() {
-    if (!this.bounds) return;
-    const copy = document.createElement('canvas');
-    copy.width = this.canvas.width;
-    copy.height = this.canvas.height;
-    copy.getContext('2d')!.drawImage(this.canvas, 0, 0);
-    this.snapshots.push({ hour: this.hour, canvas: copy, bounds: [...this.bounds] as Snapshot['bounds'] });
-  }
-
-  /** oil-imp's compositeBlocks: every block's thickness, lightly smoothed, into one image. */
-  private render() {
-    const view = this.globe.view(true, null, false);
-    const blocks: GlobeBlock[] = view.blocks;
-    if (!blocks.length) { this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); this.bounds = undefined; return; }
-    const B = view.B;
-    const minBi = Math.min(...blocks.map((b) => b.bi)), maxBi = Math.max(...blocks.map((b) => b.bi));
-    const minBj = Math.min(...blocks.map((b) => b.bj)), maxBj = Math.max(...blocks.map((b) => b.bj));
-    const width = (maxBi - minBi + 1) * B, height = (maxBj - minBj + 1) * B;
-    if (this.canvas.width !== width || this.canvas.height !== height) { this.canvas.width = width; this.canvas.height = height; }
-    const pixels = this.ctx.createImageData(width, height);
-    const row = B + 2;
-    if (this.field.length !== row * row) this.field = new Float32Array(row * row);
-    const f = this.field;
-    const blend = this.dx >= 50 ? 0.22 : 0.14;
-    let west = Infinity, east = -Infinity, south = Infinity, north = -Infinity;
-    for (const block of blocks) {
-      for (const [lon, lat] of block.corners) { west = Math.min(west, lon); east = Math.max(east, lon); south = Math.min(south, lat); north = Math.max(north, lat); }
-      this.globe.blockThickness(block, f);
-      for (let j = 0; j < B; j++) for (let i = 0; i < B; i++) {
-        const c = f[(j + 1) * row + i + 1];
-        const n = f[j * row + i] + f[j * row + i + 1] + f[j * row + i + 2] + f[(j + 1) * row + i] + f[(j + 1) * row + i + 2] + f[(j + 2) * row + i] + f[(j + 2) * row + i + 1] + f[(j + 2) * row + i + 2];
-        const [r, g, b, a] = colour(this.dx <= 10 ? c : c * (1 - blend) + (n / 8) * blend);
-        // Solver rows run north; image rows run south.
-        const o = ((maxBj - block.bj) * B + (B - 1 - j)) * width * 4 + ((block.bi - minBi) * B + i) * 4;
-        pixels.data[o] = r; pixels.data[o + 1] = g; pixels.data[o + 2] = b; pixels.data[o + 3] = a;
-      }
-    }
-    this.ctx.putImageData(pixels, 0, 0);
-    this.bounds = [west, south, east, north];
-  }
+  return { width, height, bounds: [west, south, east, north], pixels };
 }
