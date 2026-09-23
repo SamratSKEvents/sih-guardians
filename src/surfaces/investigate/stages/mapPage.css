@@ -376,3 +376,9 @@
 .dm-legend-chev { transform: rotate(-90deg); transition: transform var(--dur-fast) var(--ease-out); }
 .dm-legend[data-open] .dm-legend-chev { transform: none; }
 .dm-legend:not([data-open]) header { padding-bottom: 0; margin-bottom: 0; border-bottom: 0; }
+
+/* decluttered defaults */
+.dm-chip.is-mini { padding: 1px 5px; font-size: 10px; }
+.dm-more { display: block; margin: var(--space-3) auto; padding: var(--space-2) var(--space-5); border-radius: var(--radius-control); background: var(--panel-sunken); color: var(--ink-secondary); font: inherit; font-size: var(--text-2xs); font-weight: 600; cursor: pointer; }
+.dm-rows-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-7); }
+.dm-options .sc-filter-row { grid-template-columns: 3.6rem minmax(0, 1fr); }

@@ -91,8 +91,8 @@ interface Props {
  * the oil. `up` picks the side; the text stays one small line.
  */
 const callout = (text: string, cls: string, up: boolean, sub?: string) => L.divIcon({
-  className: 'fc-callout-anchor',
-  html: `<span class="fc-callout ${cls} ${up ? 'is-up' : 'is-down'}"><i></i><b>${text}${sub ? `<small>${sub}</small>` : ''}</b></span>`,
+  className: 'fc-maptag-anchor',
+  html: `<span class="fc-maptag ${cls} ${up ? 'is-up' : 'is-down'}"><i></i><b>${text}${sub ? `<small>${sub}</small>` : ''}</b></span>`,
   iconSize: [0, 0],
 });
 
@@ -448,21 +448,27 @@ function polyKm2(ring: LonLat[]) {
 
 /* ====================================================================== map */
 
-/** Draws one stored frame into a canvas of its own, so two overlays can pass frames between them. */
-class CanvasOverlay extends L.Layer {
-  private m?: L.Map;
+/**
+ * One stored frame, drawn into a canvas of its own (so two overlays can pass
+ * frames between them) and shown through Leaflet's ImageOverlay, which already
+ * follows pan, zoom animation and resets exactly; only the image source is ours.
+ */
+class CanvasOverlay extends L.ImageOverlay {
   private readonly el = document.createElement('canvas');
   private src?: HTMLCanvasElement;
-  private b = L.latLngBounds([0, 0], [0, 0]);
   constructor() {
-    super();
-    Object.assign(this.el.style, { position: 'absolute', pointerEvents: 'none', zIndex: '420' });
+    super('', L.latLngBounds([0, 0], [0, 0]), { interactive: false, zIndex: 420 });
   }
-  onAdd(map: L.Map) { this.m = map; map.on('move zoom resize', this.update, this); map.getPanes().overlayPane.appendChild(this.el); this.update(); return this; }
-  onRemove(map: L.Map) { map.off('move zoom resize', this.update, this); this.el.remove(); this.m = undefined; return this; }
+  // Leaflet builds an <img> here; hand it the canvas instead.
+  _initImage() {
+    const el = this.el as unknown as HTMLImageElement;
+    L.DomUtil.addClass(el, 'leaflet-image-layer');
+    if ((this as unknown as { _zoomAnimated: boolean })._zoomAnimated) L.DomUtil.addClass(el, 'leaflet-zoom-animated');
+    el.style.pointerEvents = 'none';
+    (this as unknown as { _image: HTMLImageElement })._image = el;
+  }
   set(canvas: HTMLCanvasElement | undefined, bounds?: [number, number, number, number], opacity = 1) {
     this.el.style.display = canvas ? '' : 'none';
-    this.el.style.opacity = String(opacity);
     if (canvas && canvas !== this.src) {
       if (this.el.width !== canvas.width || this.el.height !== canvas.height) { this.el.width = canvas.width; this.el.height = canvas.height; }
       const ctx = this.el.getContext('2d')!;
@@ -470,17 +476,9 @@ class CanvasOverlay extends L.Layer {
       ctx.drawImage(canvas, 0, 0);
     }
     this.src = canvas;
-    if (bounds) this.b = L.latLngBounds([bounds[1], bounds[0]], [bounds[3], bounds[2]]);
-    this.update();
+    if (bounds) this.setBounds(L.latLngBounds([bounds[1], bounds[0]], [bounds[3], bounds[2]]));
+    this.setOpacity(opacity);
   }
-  private update = () => {
-    if (!this.m) return;
-    const nw = this.m.latLngToLayerPoint(this.b.getNorthWest());
-    const se = this.m.latLngToLayerPoint(this.b.getSouthEast());
-    this.el.style.transform = `translate3d(${nw.x}px, ${nw.y}px, 0)`;
-    this.el.style.width = `${Math.max(1, se.x - nw.x)}px`;
-    this.el.style.height = `${Math.max(1, se.y - nw.y)}px`;
-  };
 }
 
 function DriftMap({

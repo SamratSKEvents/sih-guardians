@@ -255,11 +255,6 @@ export function Workspace({ slickId }: { slickId: string }) {
           </div>
         )}
 
-        {incident && (
-          <Badge status={STATE_STATUS(incident.attributionStatus)}>
-            Attribution {STATE_LABEL(incident.attributionStatus).toLowerCase()}
-          </Badge>
-        )}
         {p.lookalikeWarning === true && <Badge status="warning">Possible look-alike</Badge>}
 
         {/* The time sits with the export at the far end: both are things you

@@ -10,7 +10,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEven
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
-  Anchor, ArrowDown, ChevronDown, ArrowLeft, ArrowUp, Compass, Crosshair, Factory, FileText, Flag, Gauge, Layers, Leaf, Maximize, Navigation,
+  Anchor, ArrowDown, ChevronDown, Eye, ArrowLeft, ArrowUp, Compass, Crosshair, Factory, FileText, Flag, Gauge, Layers, Leaf, Maximize, Navigation,
   Pause, Play, Radio, Ship, ShieldAlert, Target, Waves, Wind,
 } from 'lucide-react';
 import { Badge } from '../../../design/components';
@@ -25,13 +25,14 @@ import {
   ANCHORAGES, LANES, PROTECTED, SITES, bearingOf, carryToPass, closestApproach, depthAt, coastKm, fromBundle, generate, indexLand, kmBetween,
   move, soundings, vesselAt, type Kind, type Land, type MapVessel, type Pt,
 } from './mapData';
+import './scene.css';
 import './mapPage.css';
 
-type LayerKey = 'imagery' | 'slick' | 'footprint' | 'vessels' | 'tracks' | 'cpa' | 'sites' | 'lanes' | 'protected' | 'rings' | 'depth' | 'env';
+type LayerKey = 'imagery' | 'slick' | 'footprint' | 'vessels' | 'tracks' | 'cpa' | 'sites' | 'lanes' | 'protected' | 'rings' | 'depth' | 'env' | 'alltracks' | 'allcpa';
 const LAYER_LABEL: Record<LayerKey, string> = {
   imagery: 'Satellite background', slick: 'Slick outline', footprint: 'Scene footprint', vessels: 'Vessels at clock', tracks: 'AIS tracks',
   cpa: 'Closest approach', sites: 'Rigs, SPMs, terminals', lanes: 'Lanes and anchorages', protected: 'Protected areas', rings: 'Search rings',
-  depth: 'Soundings', env: 'Wind and current',
+  depth: 'Soundings', env: 'Wind and current', alltracks: 'Every vessel track', allcpa: 'Every closest approach',
 };
 const KIND_LABEL: Record<Kind, string> = { tanker: 'Tanker', gas: 'Gas carrier', container: 'Container', bulk: 'Bulk', cargo: 'Cargo', fishing: 'Fishing', tug: 'Tug / supply', other: 'Other' };
 const KIND_ORDER: Kind[] = ['tanker', 'gas', 'container', 'bulk', 'cargo', 'tug', 'fishing', 'other'];
@@ -123,7 +124,7 @@ export function MapPage({ slick, incident, incidentId }: { slick: SlickFeature; 
   }, [playing]);
 
   const [shown, setShown] = useState<Record<LayerKey, boolean>>({
-    imagery: true, slick: true, footprint: true, vessels: true, tracks: true, cpa: true, sites: true, lanes: true, protected: true, rings: true, depth: false, env: false,
+    imagery: true, slick: true, footprint: false, vessels: true, tracks: true, cpa: true, sites: true, lanes: false, protected: false, rings: false, depth: false, env: false, alltracks: false, allcpa: false,
   });
   const [selected, setSelected] = useState<string>();
   const [filter, setFilter] = useState<'all' | 'tanker' | 'cargo' | 'fishing' | 'gap' | 'near'>('all');
@@ -131,8 +132,9 @@ export function MapPage({ slick, incident, incidentId }: { slick: SlickFeature; 
   const [hover, setHover] = useState<Pt>();
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [paneW, setPaneW] = useState(40);
-  const [dockH, setDockH] = useState(36);
-  const [layersOpen, setLayersOpen] = useState(true);
+  const [dockH, setDockH] = useState(30);
+  const [showAll, setShowAll] = useState(false);
+  const [layersOpen, setLayersOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   // Drag a grip: pointer capture, one clamped percentage of the page box.
   const drag = (axis: 'x' | 'y') => (e: RPointerEvent<HTMLDivElement>) => {
@@ -204,7 +206,6 @@ export function MapPage({ slick, incident, incidentId }: { slick: SlickFeature; 
           <input type="range" min={-12} max={0} step={1 / 12} value={t} onChange={(e) => { setPlaying(false); setT(Number(e.target.value)); }} aria-label="Clock" />
           <span className="num"><b>{hrs(t)}</b> {when.format(t0 + t * 3_600_000)} UTC</span>
         </div>
-        <div className="dm-overlay dm-north" aria-hidden="true"><Navigation size={16} /><span>N</span></div>
         <div className="dm-overlay dm-readout num">
           {hover ? (
             <>
@@ -230,7 +231,7 @@ export function MapPage({ slick, incident, incidentId }: { slick: SlickFeature; 
             <table className="dm-table">
               <thead>
                 <tr>
-                  {([['rank', '#'], ['name', 'Vessel'], ['', 'Flag'], ['', 'MMSI'], ['len', 'LOA'], ['dist', 'Now km'], ['cpa', 'CPA km'], ['cpat', 'CPA at'], ['kn', 'SOG kn'], ['cog', 'COG'], ['gap', 'AIS gap'], ['score', 'Score']] as const).map(([k, label]) => (
+                  {([['rank', '#'], ['name', 'Vessel'], ['', 'Flag'], ['dist', 'Now km'], ['cpa', 'CPA km'], ['cpat', 'CPA at'], ['kn', 'SOG kn'], ['gap', 'AIS gap'], ['score', 'Score']] as const).map(([k, label]) => (
                     <th key={label} className={k && k !== 'name' ? 'is-num' : undefined}>
                       {k ? (
                         <button type="button" onClick={() => setSort((s) => ({ key: k, dir: s.key === k ? (s.dir === 1 ? -1 : 1) : 1 }))}>
@@ -242,20 +243,17 @@ export function MapPage({ slick, incident, incidentId }: { slick: SlickFeature; 
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(({ v, now, cpa, dist }) => {
+                {(showAll ? filtered : filtered.slice(0, 10)).map(({ v, now, cpa, dist }) => {
                   const gapMin = Math.round(v.gaps.reduce((s, g) => s + g[1] - g[0], 0) * 60);
                   return (
                     <tr key={v.id} aria-selected={v.id === selected} onClick={() => setSelected(v.id === selected ? undefined : v.id)}>
                       <td className="is-num">{v.rank ?? '—'}</td>
                       <td><span className="dm-vname"><i className={`dm-dot is-${tone(v)}`} /><b>{v.name}</b><small>{v.type}</small></span></td>
                       <td className="mono">{v.flag}</td>
-                      <td className="mono">{v.mmsi}</td>
-                      <td className="is-num">{v.lengthM} m</td>
                       <td className="is-num">{f1(dist)}</td>
                       <td className="is-num">{f1(cpa.km)}</td>
                       <td className="is-num">{hrs(cpa.t)}</td>
                       <td className="is-num">{f1(now.knots)}</td>
-                      <td className="is-num">{now.heading.toFixed(0)}°</td>
                       <td className="is-num">{gapMin ? <span className="dm-gap">{gapMin} min</span> : '—'}</td>
                       <td className="is-num"><span className="dm-score"><i style={{ transform: `scaleX(${v.score ?? 0})` }} />{(v.score ?? 0).toFixed(3)}</span></td>
                     </tr>
@@ -264,6 +262,7 @@ export function MapPage({ slick, incident, incidentId }: { slick: SlickFeature; 
               </tbody>
             </table>
             {!vessels && <p className="dm-loading">Loading AIS…</p>}
+            {filtered.length > 10 && <button type="button" className="dm-more" onClick={() => setShowAll(!showAll)}>{showAll ? 'Show top 10' : `Show all ${filtered.length}`}</button>}
           </div>
         </section>
       </div>
@@ -273,7 +272,7 @@ export function MapPage({ slick, incident, incidentId }: { slick: SlickFeature; 
         {sel ? (
           <VesselCard row={sel} centre={centre} t0={t0} onBack={() => setSelected(undefined)} done={done} setDone={setDone} />
         ) : (
-          <AreaSummary rows={rows} centre={centre} t={t} land={land} env={env} onSelect={setSelected} />
+          <AreaSummary rows={rows} centre={centre} t={t} land={land} env={env} onSelect={setSelected} shown={shown} setShown={setShown} />
         )}
       </aside>
     </div>
@@ -284,7 +283,9 @@ function layerCount(k: LayerKey, rows: { v: MapVessel; cpa: { km: number } }[], 
   switch (k) {
     case 'vessels': return String(rows.length);
     case 'tracks': return String(rows.reduce((s, r) => s + r.v.points.length, 0));
-    case 'cpa': return String(Math.min(5, rows.length));
+    case 'cpa': return String(Math.min(3, rows.length));
+    case 'alltracks': return String(rows.length);
+    case 'allcpa': return String(rows.length);
     case 'sites': return String(SITES.filter((s) => kmBetween(s.at, centre) < 80).length);
     case 'protected': return String(PROTECTED.filter((s) => kmBetween(s.at, centre) < 80).length);
     case 'lanes': return String(LANES.length + ANCHORAGES.filter((a) => kmBetween(a.at, centre) < 80).length);
@@ -407,7 +408,7 @@ function MapCanvas({
       L.circleMarker(ll(centre), { radius: 3, className: 'dm-centre', interactive: false }).addTo(g);
     }
     if (shown.tracks) {
-      for (const r of rows) {
+      for (const r of rows.filter((x) => shown.alltracks || (x.v.rank && x.v.rank <= 5) || x.v.id === selected)) {
         const v = r.v;
         const cls = `dm-track is-${tone(v, selected)}`;
         const pts = v.points;
@@ -416,7 +417,7 @@ function MapCanvas({
           if (i && v.gaps.some(([a, b]) => pts[i - 1].t === a && pts[i].t === b)) {
             L.polyline([ll([pts[i - 1].lon, pts[i - 1].lat]), ll([pts[i].lon, pts[i].lat])], { className: `${cls} is-gap`, dashArray: '6 5', interactive: false }).addTo(g);
             const mid: Pt = [(pts[i - 1].lon + pts[i].lon) / 2, (pts[i - 1].lat + pts[i].lat) / 2];
-            if (v.rank && v.rank <= 5) L.marker(ll(mid), { icon: chip(`AIS gap · ${Math.round((pts[i].t - pts[i - 1].t) * 60)} min`, 'is-warning'), interactive: false }).addTo(g);
+            if ((v.rank && v.rank <= 3) || v.id === selected) L.marker(ll(mid), { icon: chip(`AIS gap ${Math.round((pts[i].t - pts[i - 1].t) * 60)} min`, 'is-warning is-mini'), interactive: false }).addTo(g);
             seg.push([]);
           }
           seg[seg.length - 1].push(ll([pts[i].lon, pts[i].lat]));
@@ -425,11 +426,11 @@ function MapCanvas({
       }
     }
     if (shown.cpa) {
-      for (const r of [...rows].sort((a, b) => (a.v.rank ?? 99) - (b.v.rank ?? 99)).slice(0, 5)) {
+      for (const r of [...rows].sort((a, b) => (a.v.rank ?? 99) - (b.v.rank ?? 99)).slice(0, shown.allcpa ? rows.length : 3)) {
         const target = nearestOnSlick(rings, r.cpa.at) ?? centre;
         L.polyline([ll(r.cpa.at), ll(target)], { className: 'dm-cpa', dashArray: '2 4', interactive: false }).addTo(g);
         L.circleMarker(ll(r.cpa.at), { radius: 3, className: 'dm-cpa-dot', interactive: false }).addTo(g);
-        L.marker(ll(r.cpa.at), { icon: chip(`${f1(r.cpa.km)} km · ${hrs(r.cpa.t)}`, r.v.rank === 1 ? 'is-warning' : ''), interactive: false }).addTo(g);
+        if (r.v.rank === 1 || r.v.id === selected) L.marker(ll(r.cpa.at), { icon: chip(`CPA ${f1(r.cpa.km)} km`, 'is-warning is-mini'), interactive: false }).addTo(g);
       }
     }
     return () => void g.remove();
@@ -516,7 +517,8 @@ function Tile({ label, value, unit, note, tone: tn }: { label: string; value: st
   );
 }
 
-function AreaSummary({ rows, centre, t, land, env, onSelect }: { rows: Row[]; centre: Pt; t: number; land?: Land; env?: Env; onSelect: (id: string) => void }) {
+function AreaSummary({ rows, centre, t, land, env, onSelect, shown, setShown }: { rows: Row[]; centre: Pt; t: number; land?: Land; env?: Env; onSelect: (id: string) => void; shown: Record<LayerKey, boolean>; setShown: (fn: (s: Record<LayerKey, boolean>) => Record<LayerKey, boolean>) => void }) {
+  const [details, setDetails] = useState<Record<'sites' | 'areas' | 'conditions', boolean>>({ sites: false, areas: false, conditions: false });
   const within = rows.filter((r) => r.dist <= 20);
   const tankers = rows.filter((r) => r.v.kind === 'tanker' || r.v.kind === 'gas');
   const gaps = rows.filter((r) => r.v.gaps.length);
@@ -537,21 +539,80 @@ function AreaSummary({ rows, centre, t, land, env, onSelect }: { rows: Row[]; ce
         <Badge claim="observed">AIS</Badge>
       </section>
 
-      <section className="dm-tiles">
-        <Tile label="Vessels ≤ 20 km" value={String(within.length)} note={`of ${rows.length} tracked`} />
-        <Tile label="Tankers" value={String(tankers.length)} note="crude, product, gas" tone={tankers.length ? 'warning' : undefined} />
-        <Tile label="AIS gaps" value={String(gaps.length)} note="silent > 40 min" tone={gaps.length ? 'critical' : 'clear'} />
-        <Tile label="Nearest vessel" value={nearest ? f1(nearest.dist) : '—'} unit="km" note={nearest?.v.name} />
-        <Tile label="Nearest rig / SPM" value={sites[0] ? f1(sites[0].km) : '> 80'} unit="km" note={sites[0]?.name ?? 'none charted'} />
-        <Tile label="Depth at slick" value={String(depthAt(land, centre))} unit="m" note="chart estimate" />
-        <Tile label="To the coast" value={coast !== undefined ? f1(coast) : '> 100'} unit="km" note="nearest shoreline" />
-        <Tile label="Anchorage" value={anchor ? f1(anchor.km) : '—'} unit="km" note={anchor?.name} />
+      <section className="dm-card dm-options">
+        <header className="dm-head"><h3><Eye size={15} />Show on map</h3><span className="dm-meta">off by default, to keep the chart readable</span></header>
+        <div className="sc-filter-row">
+          <span className="sc-filter-side">Map</span>
+          <div className="sc-filter-buttons" role="group" aria-label="Map layers">
+            {([
+              ['footprint', 'Scene footprint', 'SAR frame', Maximize],
+              ['lanes', 'Lanes & anchorages', `${layerCount('lanes', rows, centre)} charted`, Anchor],
+              ['protected', 'Protected areas', `${layerCount('protected', rows, centre)} within 80 km`, Leaf],
+              ['rings', 'Search rings', '5 / 10 / 20 km', Target],
+              ['alltracks', 'Every track', `${rows.length} vessels, not top 5`, Navigation],
+              ['allcpa', 'Every closest approach', `${rows.length} lines, not top 3`, Crosshair],
+              ['depth', 'Soundings', 'chart depths', Waves],
+              ['env', 'Wind & current', 'arrows at the pass', Wind],
+            ] as const).map(([k, label, meta, Icon]) => (
+              <button key={k} type="button" aria-pressed={shown[k]} onClick={() => setShown((x) => ({ ...x, [k]: !x[k] }))}>
+                <Icon size={14} /><span><b>{label}</b><small>{meta}</small></span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="sc-filter-row">
+          <span className="sc-filter-side">Details</span>
+          <div className="sc-filter-buttons" role="group" aria-label="Detail sections">
+            {([
+              ['sites', 'Infrastructure', `${sites.length} within 80 km`, Factory],
+              ['areas', 'Sensitive areas', `${areas.length} within 60 km`, Leaf],
+              ['conditions', 'Full conditions', 'SST, bearings, source', Gauge],
+            ] as const).map(([k, label, meta, Icon]) => (
+              <button key={k} type="button" aria-pressed={details[k]} onClick={() => setDetails((x) => ({ ...x, [k]: !x[k] }))}>
+                <Icon size={14} /><span><b>{label}</b><small>{meta}</small></span>
+              </button>
+            ))}
+          </div>
+        </div>
       </section>
 
-      <section className="dm-card">
-        <header className="dm-head"><h3><Ship size={15} />Traffic composition</h3><span className="dm-meta num">{rows.length} vessels</span></header>
-        <div className="dm-stack">{kinds.map(({ k, n }) => <span key={k} className={`k-${k}`} style={{ flexGrow: n }} title={`${KIND_LABEL[k]}: ${n}`} />)}</div>
-        <ul className="dm-stack-key">{kinds.map(({ k, n }) => <li key={k}><i className={`k-${k}`} />{KIND_LABEL[k]}<b className="num">{n}</b></li>)}</ul>
+      {details.conditions && env && (
+        <section className="dm-card">
+          <header className="dm-head"><h3><Wind size={15} />Conditions at the pass</h3></header>
+          <dl className="dm-rows dm-rows-2">
+            <div><dt>Wind</dt><dd className="num">{f1(env.windMs)} m/s from {COMPASS(env.windFrom)} <small>{env.windFrom.toFixed(0)}°</small></dd></div>
+            <div><dt>Current</dt><dd className="num">{env.currentMs.toFixed(2)} m/s to {COMPASS(env.currentTo)} <small>{env.currentTo.toFixed(0)}°</small></dd></div>
+            <div><dt>Sea state</dt><dd className="num">{f1(env.waveM)} m <small>significant</small></dd></div>
+            <div><dt>SST</dt><dd className="num">{f1(env.sstC)} °C</dd></div>
+            <div><dt>Look-alike band</dt><dd>{env.windMs >= 3 && env.windMs <= 12 ? <span className="dm-ok">inside 3–12 m/s</span> : <span className="dm-bad">outside 3–12 m/s</span>}</dd></div>
+            <div><dt>Source</dt><dd><small>{env.source}</small></dd></div>
+          </dl>
+        </section>
+      )}
+      {details.sites && (
+        <section className="dm-card">
+          <header className="dm-head"><h3><Factory size={15} />Infrastructure ≤ 80 km</h3><span className="dm-meta num">{sites.length}</span></header>
+          <ul className="dm-list">
+            {sites.map((s) => <li key={s.name}><i className={`dm-site-dot is-${s.kind}`} /><span><b>{s.name}</b><small>{s.operator} · {s.kind === 'spm' ? 'Single-point mooring' : s.kind === 'platform' ? 'Offshore platform' : 'Oil terminal'}</small></span><b className="num">{f1(s.km)} km</b></li>)}
+            {!sites.length && <li><span><small>No charted rigs, SPMs or terminals within 80 km.</small></span></li>}
+          </ul>
+        </section>
+      )}
+      {details.areas && (
+        <section className="dm-card">
+          <header className="dm-head"><h3><Leaf size={15} />Sensitive areas ≤ 60 km</h3><span className="dm-meta num">{areas.length}</span></header>
+          <ul className="dm-list is-two">
+            {areas.map((a) => <li key={a.name}><i className="dm-area-dot" /><span><b>{a.name}</b><small>{a.kind}</small></span><b className="num">{a.km < 0.1 ? 'inside' : `${f1(a.km)} km`}</b></li>)}
+            {!areas.length && <li><span><small>None within 60 km.</small></span></li>}
+          </ul>
+        </section>
+      )}
+
+      <section className="dm-tiles">
+        <Tile label="Vessels ≤ 20 km" value={String(within.length)} note={`of ${rows.length} tracked`} />
+        <Tile label="AIS gaps" value={String(gaps.length)} note="silent > 40 min" tone={gaps.length ? 'critical' : 'clear'} />
+        <Tile label="Nearest vessel" value={nearest ? f1(nearest.dist) : '—'} unit="km" note={nearest?.v.name} />
+        <Tile label="To the coast" value={coast !== undefined ? f1(coast) : '> 100'} unit="km" note="nearest shoreline" />
       </section>
 
       <section className="dm-card">
@@ -559,35 +620,24 @@ function AreaSummary({ rows, centre, t, land, env, onSelect }: { rows: Row[]; ce
         <Proximity rows={rows} centre={centre} t={t} onSelect={onSelect} />
       </section>
 
-      <div className="dm-grid">
-        <section className="dm-card">
-          <header className="dm-head"><h3><Wind size={15} />Conditions at the pass</h3></header>
-          {env ? (
-            <dl className="dm-rows">
-              <div><dt>Wind</dt><dd className="num">{f1(env.windMs)} m/s from {COMPASS(env.windFrom)} <small>{env.windFrom.toFixed(0)}°</small></dd></div>
-              <div><dt>Current</dt><dd className="num">{env.currentMs.toFixed(2)} m/s to {COMPASS(env.currentTo)} <small>{env.currentTo.toFixed(0)}°</small></dd></div>
-              <div><dt>Sea state</dt><dd className="num">{f1(env.waveM)} m <small>significant</small></dd></div>
-              <div><dt>SST</dt><dd className="num">{f1(env.sstC)} °C</dd></div>
-              <div><dt>Look-alike band</dt><dd>{env.windMs >= 3 && env.windMs <= 12 ? <span className="dm-ok">inside 3–12 m/s</span> : <span className="dm-bad">outside 3–12 m/s</span>}</dd></div>
-              <div><dt>Source</dt><dd><small>{env.source}</small></dd></div>
-            </dl>
-          ) : <p className="dm-meta">Loading…</p>}
-        </section>
-        <section className="dm-card">
-          <header className="dm-head"><h3><Factory size={15} />Infrastructure ≤ 80 km</h3><span className="dm-meta num">{sites.length}</span></header>
-          <ul className="dm-list">
-            {sites.slice(0, 7).map((s) => <li key={s.name}><i className={`dm-site-dot is-${s.kind}`} /><span><b>{s.name}</b><small>{s.operator} · {s.kind === 'spm' ? 'Single-point mooring' : s.kind === 'platform' ? 'Offshore platform' : 'Oil terminal'}</small></span><b className="num">{f1(s.km)} km</b></li>)}
-            {!sites.length && <li><span><small>No charted rigs, SPMs or terminals within 80 km.</small></span></li>}
-          </ul>
-        </section>
-      </div>
+      <section className="dm-card">
+        <header className="dm-head"><h3><Ship size={15} />Traffic</h3><span className="dm-meta num">{rows.length} vessels · {tankers.length} tankers</span></header>
+        <div className="dm-stack">{kinds.map(({ k, n }) => <span key={k} className={`k-${k}`} style={{ flexGrow: n }} title={`${KIND_LABEL[k]}: ${n}`} />)}</div>
+        <ul className="dm-stack-key">{kinds.map(({ k, n }) => <li key={k}><i className={`k-${k}`} />{KIND_LABEL[k]}<b className="num">{n}</b></li>)}</ul>
+      </section>
 
       <section className="dm-card">
-        <header className="dm-head"><h3><Leaf size={15} />Sensitive areas ≤ 60 km</h3><span className="dm-meta num">{areas.length}</span></header>
-        <ul className="dm-list is-two">
-          {areas.map((a) => <li key={a.name}><i className="dm-area-dot" /><span><b>{a.name}</b><small>{a.kind}</small></span><b className="num">{a.km < 0.1 ? 'inside' : `${f1(a.km)} km`}</b></li>)}
-          {!areas.length && <li><span><small>None within 60 km.</small></span></li>}
-        </ul>
+        <header className="dm-head"><h3><Wind size={15} />Surroundings</h3></header>
+        <dl className="dm-rows dm-rows-2">
+          <div><dt>Wind</dt><dd className="num">{env ? `${f1(env.windMs)} m/s from ${COMPASS(env.windFrom)}` : '…'}</dd></div>
+          <div><dt>Current</dt><dd className="num">{env ? `${env.currentMs.toFixed(2)} m/s to ${COMPASS(env.currentTo)}` : '…'}</dd></div>
+          <div><dt>Sea state</dt><dd className="num">{env ? `${f1(env.waveM)} m` : '…'}</dd></div>
+          <div><dt>Depth</dt><dd className="num">{depthAt(land, centre)} m</dd></div>
+          <div><dt>Nearest rig / SPM</dt><dd>{sites[0] ? <>{sites[0].name} <small className="num">{f1(sites[0].km)} km</small></> : 'none ≤ 80 km'}</dd></div>
+          <div><dt>Anchorage</dt><dd>{anchor ? <>{anchor.name} <small className="num">{f1(anchor.km)} km</small></> : '—'}</dd></div>
+          <div><dt>Sensitive area</dt><dd>{areas[0] ? <>{areas[0].name} <small className="num">{areas[0].km < 0.1 ? 'inside' : `${f1(areas[0].km)} km`}</small></> : 'none ≤ 60 km'}</dd></div>
+          <div><dt>Look-alike band</dt><dd>{env && env.windMs >= 3 && env.windMs <= 12 ? <span className="dm-ok">inside 3–12 m/s</span> : <span className="dm-bad">outside</span>}</dd></div>
+        </dl>
       </section>
     </>
   );
