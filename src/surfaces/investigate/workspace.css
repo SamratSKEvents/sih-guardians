@@ -1317,3 +1317,7 @@
 }
 .ws-pages button:hover { color: var(--ink); }
 .ws-pages button[aria-pressed='true'] { background: var(--panel); color: var(--ink); font-weight: 600; box-shadow: var(--shadow-chip); }
+
+/* Seven pages: the current one is named, the rest are icons with a tooltip. */
+.ws-pages.is-dense button:not([aria-pressed='true']) { padding: 0 var(--space-4); }
+.ws-pages.is-dense button:not([aria-pressed='true']) span { display: none; }

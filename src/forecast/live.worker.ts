@@ -13,7 +13,7 @@ import type { Forcing } from './forcing';
 export interface LiveRequest { rings: LonLat[][]; volumeM3: number; forcing: Forcing; backward: boolean; hours: number }
 export type LiveMessage = { kind: 'frame'; frame: LiveFrame } | { kind: 'done' } | { kind: 'failed'; detail: string };
 
-export const FRAME_MIN = 10;
+export const FRAME_MIN = 5;
 const post = (m: LiveMessage, transfer: Transferable[] = []) => (self as unknown as Worker).postMessage(m, transfer);
 
 function emit(g: GlobeMaster) {

@@ -34,11 +34,14 @@ import type { CoastPoint, OutlineMessage, OutlineRequest, OutlineStep } from '..
 import type { LonLat } from '../../../forecast/engine';
 import { when } from '../../../format';
 import { ringsOf } from '../geometry';
-import type { ForecastDirection, ForecastPanel } from '../Workspace';
+import type { ForecastDirection, ForecastPanel, ResponsePanel } from '../Workspace';
 import { PROTECTED, SITES, bearingOf, carryToPass, fromBundle, generate, indexLand, kmBetween, move, vesselAt, type Land, type MapVessel, type Pt } from './mapData';
 import { chip, shipIcon, tone } from './MapPage';
 import './mapPage.css';
 import './forecastPage.css';
+import './response.css';
+import { buildPlan } from './responsePlan';
+import { drawResponse, focusOf, responseEvents, ResponsePane, RESPONSE_DEFAULTS, RESPONSE_LAYER_LABEL, usePlanState } from './ResponseView';
 
 type LayerKey = 'live' | 'observed' | 'steps' | 'track' | 'envelope' | 'source' | 'wind' | 'current' | 'coast' | 'borders' | 'protected' | 'towns' | 'sites' | 'vessels' | 'tracks';
 const LAYER_LABEL: Record<LayerKey, string> = {
@@ -79,11 +82,23 @@ interface Props {
   setPage: (p: ForecastPanel) => void;
   direction: ForecastDirection;
   setDirection: (d: ForecastDirection) => void;
+  /** The Response tab: same frame, the plan's layers, events and panes. */
+  response?: { page: ResponsePanel; setPage: (p: ResponsePanel) => void };
 }
+
+/**
+ * A compact label on a short leader, set off the feature so it never covers
+ * the oil. `up` picks the side; the text stays one small line.
+ */
+const callout = (text: string, cls: string, up: boolean, sub?: string) => L.divIcon({
+  className: 'fc-callout-anchor',
+  html: `<span class="fc-callout ${cls} ${up ? 'is-up' : 'is-down'}"><i></i><b>${text}${sub ? `<small>${sub}</small>` : ''}</b></span>`,
+  iconSize: [0, 0],
+});
 
 const hashOf = (s: string) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
 
-export function ForecastPage({ slick, incident, incidentId, page, setPage, direction, setDirection }: Props) {
+export function ForecastPage({ slick, incident, incidentId, page, setPage, direction, setDirection, response }: Props) {
   const p = slick.properties;
   const t0 = incident?.acquisitionTime ? Date.parse(incident.acquisitionTime) : Date.parse(String(p.observedAt));
   const rings = useMemo(() => ringsOf(slick.geometry), [slick.id]);
@@ -107,7 +122,7 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
   const curMs = Math.hypot(forcing.driftU, forcing.driftV);
   const curTo = ((Math.atan2(forcing.driftU, forcing.driftV) * 180) / Math.PI + 360) % 360;
   const h = hashOf(slick.id);
-  const waveM = 0.4 + forcing.windSpeed * 0.1 + (h % 7) / 20;
+  const waveM = 0.25 + forcing.windSpeed * 0.08 + (h % 7) / 40;
   const sstC = 25.5 + (h % 30) / 10;
 
   /* -------------------------------------------------------------- land */
@@ -163,7 +178,14 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
   const fa = run.frames.current[i];
   const fb = run.frames.current[i + 1];
   const mix = fb ? Math.max(0, Math.min(1, (a * 60) / FRAME_MIN - i)) : 0;
-  const overlay = { a: fa?.canvas ? { canvas: fa.canvas, bounds: fa.bounds, opacity: 1 - mix } : undefined, b: fb?.canvas && mix > 0 ? { canvas: fb.canvas, bounds: fb.bounds, opacity: mix } : undefined };
+  // Motion-compensated blend: both frames slide along the step between their
+  // centres so they overlap where the oil is now, rather than fading in place.
+  const dx = fa && fb ? fb.centre[0] - fa.centre[0] : 0, dy = fa && fb ? fb.centre[1] - fa.centre[1] : 0;
+  const shift = (b: [number, number, number, number], k: number): [number, number, number, number] => [b[0] + dx * k, b[1] + dy * k, b[2] + dx * k, b[3] + dy * k];
+  const overlay = {
+    a: fa?.canvas ? { canvas: fa.canvas, bounds: shift(fa.bounds, mix), opacity: 1 - mix * mix } : undefined,
+    b: fb?.canvas && mix > 0 ? { canvas: fb.canvas, bounds: shift(fb.bounds, mix - 1), opacity: mix * (2 - mix) * 0.999 } : undefined,
+  };
   const stats = fa?.stats;
   const problem = fwdRun.failed ?? bwdRun.failed;
 
@@ -203,9 +225,11 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
   const [selected, setSelected] = useState<string>();
 
   /* ------------------------------------------------------------ layers */
-  const [shown, setShown] = useState<Set<LayerKey>>(new Set(DEFAULTS[page]));
-  useEffect(() => setShown(new Set(DEFAULTS[page])), [page]);
-  const [layersOpen, setLayersOpen] = useState(true);
+  const defaults = response ? RESPONSE_DEFAULTS[response.page] : DEFAULTS[page];
+  const labels: Record<string, string> = response ? { ...LAYER_LABEL, ...RESPONSE_LAYER_LABEL } : LAYER_LABEL;
+  const [shown, setShown] = useState<Set<string>>(new Set(defaults));
+  useEffect(() => setShown(new Set(defaults)), [page, response?.page]);
+  const [layersOpen, setLayersOpen] = useState(!response);
   const [hover, setHover] = useState<Pt>();
 
   /* ---------------------------------------------------------- derived */
@@ -226,7 +250,14 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
 
   const display = t;
   const at = t0 + t * 3_600_000;
-  const events = useMemo(() => timelineEvents(d, fwd, bwd), [d, fwd.length, bwd.length]);
+  const [planState, setPlanState] = usePlanState(slick.id);
+  const [picked, setPicked] = useState<string>();
+  const plan = useMemo(() => (response && fwd.length > 12 ? buildPlan({
+    slickId: slick.id, centre, fwd, coast, forcing, towns: TOWNS.filter((x) => kmBetween(x.at, centre) < 120), driftBearing: d.driftBearing, driftMs: d.driftMs,
+    firstShore: d.firstShore, firstAt: d.firstAt, envelope: d.envelope, waveM, receptors: d.receptors, topVessel: d.top[0]?.v, state: planState,
+  }) : undefined), [response !== undefined, fwd.length, coast, d, planState]);
+  const events = useMemo(() => [...timelineEvents(d, fwd, bwd), ...(plan ? responseEvents(plan, planState) : [])].sort((a, b) => a.h - b.h), [d, fwd.length, bwd.length, plan, planState]);
+  const tKey = Math.round(t * 20) / 20;
 
   return (
     <div className="fc" ref={root} style={{ gridTemplateColumns: `minmax(0, 1fr) auto ${paneW}%` }}>
@@ -236,26 +267,30 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
             centre={centre} rings={rings} shown={shown} overlay={overlay} fwd={fwd} bwd={bwd} coast={coast} vessels={d.top.map((r) => r.v)} selected={selected}
             onSelect={setSelected} landRings={landRings} forcing={forcing} backward={backward}
             onHover={setHover} envelope={d.envelope}
+            extra={plan && response ? (g) => drawResponse(g, plan, shown, tKey, planState, response.page, (id) => { setPicked(id); response.setPage('assets'); }) : undefined}
+            focus={plan && response ? focusOf(plan, response.page, centre) : undefined}
+            focusKey={plan && response ? `${response.page}|${plan.zones.length}` : ''}
+            extraKey={plan && response ? `${tKey}|${response.page}|${[...shown].join()}|${JSON.stringify(planState)}|${fwd.length}` : ''}
           />
           <div className="dm-overlay dm-legend fc-legend" data-open={layersOpen || undefined}>
             <header>
               <button type="button" aria-expanded={layersOpen} onClick={() => setLayersOpen(!layersOpen)}>
-                <Layers size={14} />Layers<span className="num">{shown.size}/{Object.keys(LAYER_LABEL).length}</span>
+                <Layers size={14} />Layers<span className="num">{shown.size}/{Object.keys(labels).length}</span>
                 <ChevronDown size={14} className="dm-legend-chev" />
               </button>
             </header>
-            {layersOpen && (Object.keys(LAYER_LABEL) as LayerKey[]).map((k) => (
+            {layersOpen && Object.keys(labels).map((k) => (
               <label key={k}>
                 <input type="checkbox" checked={shown.has(k)} onChange={() => setShown((s) => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n; })} />
                 <i className={`fc-key k-${k}`} />
-                <span>{LAYER_LABEL[k]}</span>
+                <span>{labels[k]}</span>
                 <b />
               </label>
             ))}
           </div>
           <div className="dm-overlay fc-heading">
             <span className={`fc-live-dot${playing ? ' is-on' : ''}`} />
-            <b>{backward ? 'Backward source trace' : 'Forward drift simulation'}</b>
+            <b>{response ? 'Response plan' : backward ? 'Backward source trace' : 'Forward drift simulation'}</b>
             <span className="num">{signed(display)}</span>
             <span className="fc-heading-meta">50 m grid · {forcing.measured ? 'measured forcing' : 'synthetic forcing'}</span>
           </div>
@@ -285,10 +320,17 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
       <div className="dm-grip is-x" role="separator" aria-orientation="vertical" aria-label="Resize the detail pane" onPointerDown={grab} />
       <aside className="dm-pane fc-pane">
         {problem && <section className="dm-card fc-warn"><AlertTriangle size={15} /><span>{problem}</span></section>}
-        {page === 'overview' && <Overview d={d} fwd={fwd} bwd={bwd} stats={stats} backward={backward} forcing={forcing} areaM2={areaM2} volumeM3={volumeM3} shownHour={display} t0={t0} setPage={setPage} setDirection={setDirection} waveM={waveM} sstC={sstC} windFrom={windFrom} curMs={curMs} curTo={curTo} />}
-        {page === 'environment' && <EnvironmentPane d={d} forcing={forcing} windFrom={windFrom} curMs={curMs} curTo={curTo} waveM={waveM} sstC={sstC} t0={t0} />}
-        {page === 'impact' && <ImpactPane d={d} outlineDone={outlineDone.forward} setPage={setPage} />}
-        {page === 'vessels' && <VesselPane d={d} vessels={vessels} selected={selected} setSelected={setSelected} t0={t0} />}
+        {response && (plan
+          ? <ResponsePane page={response.page} setPage={response.setPage} plan={plan} t={t} t0={t0} state={planState} setState={setPlanState} forcing={forcing} waveM={waveM} firstShore={d.firstShore} picked={picked} setPicked={setPicked} products={{
+            slickId: slick.id, town: [...TOWNS].sort((x, y) => kmBetween(x.at, centre) - kmBetween(y.at, centre))[0]?.name ?? 'the coast', region: `${[...TOWNS].sort((x, y) => kmBetween(x.at, centre) - kmBetween(y.at, centre))[0]?.name ?? 'Coastal'} offshore`,
+            t0, centre: { lat: centre[1], lon: centre[0] }, areaKm2: areaM2 / 1e6, lengthKm: (Number(p.lengthM) || Math.sqrt(areaM2) * 2) / 1000, driftTowardDeg: d.driftBearing,
+            windSpeedMs: forcing.windSpeed, windFromDeg: windFrom, currentSpeedMs: curMs, currentTowardDeg: curTo, waveHsM: waveM,
+          }} />
+          : <p className="dm-loading">Building the response plan from the forecast…</p>)}
+        {!response && page === 'overview' && <Overview d={d} fwd={fwd} bwd={bwd} stats={stats} backward={backward} forcing={forcing} areaM2={areaM2} volumeM3={volumeM3} shownHour={display} t0={t0} setPage={setPage} setDirection={setDirection} waveM={waveM} sstC={sstC} windFrom={windFrom} curMs={curMs} curTo={curTo} />}
+        {!response && page === 'environment' && <EnvironmentPane d={d} forcing={forcing} windFrom={windFrom} curMs={curMs} curTo={curTo} waveM={waveM} sstC={sstC} t0={t0} />}
+        {!response && page === 'impact' && <ImpactPane d={d} outlineDone={outlineDone.forward} setPage={setPage} />}
+        {!response && page === 'vessels' && <VesselPane d={d} vessels={vessels} selected={selected} setSelected={setSelected} t0={t0} />}
       </aside>
     </div>
   );
@@ -442,9 +484,10 @@ class CanvasOverlay extends L.Layer {
 }
 
 function DriftMap({
-  centre, rings, shown, overlay, fwd, bwd, coast, vessels, selected, onSelect, landRings, forcing, backward, onHover, envelope,
+  centre, rings, shown, overlay, fwd, bwd, coast, vessels, selected, onSelect, landRings, forcing, backward, onHover, envelope, extra, extraKey, focus, focusKey,
 }: {
-  centre: Pt; rings: number[][][]; shown: Set<LayerKey>; overlay: Record<'a' | 'b', { canvas: HTMLCanvasElement; bounds: [number, number, number, number]; opacity: number } | undefined>;
+  extra?: (g: L.LayerGroup) => void; extraKey?: string; focus?: Pt[]; focusKey?: string;
+  centre: Pt; rings: number[][][]; shown: Set<string>; overlay: Record<'a' | 'b', { canvas: HTMLCanvasElement; bounds: [number, number, number, number]; opacity: number } | undefined>;
   fwd: OutlineStep[]; bwd: OutlineStep[]; coast: CoastPoint[]; vessels: MapVessel[]; selected?: string; onSelect: (id?: string) => void;
   landRings?: LonLat[][]; forcing: Forcing;
   backward: boolean; onHover: (p?: Pt) => void; envelope: LonLat[];
@@ -485,6 +528,12 @@ function DriftMap({
   useEffect(() => { framed.current = false; if (rings.length) fit('slick'); }, [rings.length]);
   // Once the forecast reaches its horizon, frame all of it once.
   useEffect(() => { if (!framed.current && fwd.length >= 25) { framed.current = true; fit('forecast'); } }, [fwd.length]);
+  // A Response page frames its own content when it opens.
+  useEffect(() => {
+    if (!focus?.length || !map.current) return;
+    framed.current = true;
+    map.current.flyToBounds(L.latLngBounds(focus.map(ll)).pad(0.25), { duration: 0.6, maxZoom: 12.5, paddingTopLeft: [60, 90], paddingBottomRight: [60, 60] });
+  }, [focusKey]);
   // Switching direction frames what that direction draws.
   const firstDir = useRef(true);
   useEffect(() => { if (firstDir.current) { firstDir.current = false; return; } fit('forecast'); }, [backward]);
@@ -528,7 +577,7 @@ function DriftMap({
         const s = fwd.find((x) => x.hour === hr);
         if (!s) continue;
         L.circleMarker(ll(s.centre), { radius: 5, color: '#ffffff', weight: 2, fillColor: STEP_FILL[STEP_HOURS.indexOf(hr)], fillOpacity: 1, interactive: false }).addTo(g);
-        L.marker(ll(s.centre), { icon: L.divIcon({ className: 'dm-chip-anchor', html: `<span class="dm-chip fc-step-chip">+${hr} h · ${f1(s.areaKm2)} km²</span>`, iconSize: [0, 0] }), interactive: false }).addTo(g);
+        L.marker(ll(s.centre), { icon: callout(`+${hr} h`, 'is-step', STEP_HOURS.indexOf(hr) % 2 === 0, `${f1(s.areaKm2)} km²`), interactive: false }).addTo(g);
       }
     }
     if (shown.has('source') && bwd.length > 1) {
@@ -539,9 +588,9 @@ function DriftMap({
         const s = bwd.find((x) => x.hour === hr);
         if (!s) continue;
         L.circleMarker(ll(s.centre), { radius: 4, color: '#fff', weight: 1.5, fillColor: '#ffb547', fillOpacity: 1, interactive: false }).addTo(g);
-        L.marker(ll(s.centre), { icon: L.divIcon({ className: 'dm-chip-anchor', html: `<span class="dm-chip fc-source-chip">${signed(hr)}</span>`, iconSize: [0, 0] }), interactive: false }).addTo(g);
+        L.marker(ll(s.centre), { icon: callout(signed(hr).replace('.0', ''), 'is-source', hr % 6 === 0), interactive: false }).addTo(g);
       }
-      L.marker(ll(src.centre), { icon: L.divIcon({ className: 'dm-chip-anchor', html: `<span class="dm-chip fc-source-chip">Possible source region · ${signed(src.hour)}</span>`, iconSize: [0, 0] }), interactive: false }).addTo(g);
+      L.marker(ll(src.centre), { icon: callout('Source', 'is-source', false, signed(src.hour).replace('.0', '')), interactive: false }).addTo(g);
     }
     if (shown.has('coast')) for (const c of coast) {
       if (c.hour === null) continue;
@@ -568,9 +617,19 @@ function DriftMap({
     }
     if (shown.has('observed')) {
       for (const r of rings) L.polygon(r.map((q) => ll(q as Pt)), { color: '#ff8a3c', weight: 2, fillColor: '#ff8a3c', fillOpacity: 0.28, interactive: false }).addTo(g);
-      L.marker(ll(centre), { icon: L.divIcon({ className: 'dm-chip-anchor', html: '<span class="dm-chip fc-slick-chip">Detected slick · T0</span>', iconSize: [0, 0] }), interactive: false }).addTo(g);
+      L.marker(ll(centre), { icon: callout('T0', 'is-slick', false, 'detected'), interactive: false }).addTo(g);
     }
   }, [shown, fwd.length, bwd.length, coast, vessels, selected, landRings, envelope.length, backward]);
+
+  // The Response tab's own layers, redrawn as the clock moves.
+  const extraGroup = useRef<L.LayerGroup | undefined>(undefined);
+  useEffect(() => {
+    extraGroup.current?.remove();
+    if (!extra) return;
+    const g = L.layerGroup().addTo(map.current!);
+    extraGroup.current = g;
+    extra(g);
+  }, [extraKey]);
 
   // Wind and current, oil-imp's arrow grid, redrawn on every move.
   useEffect(() => {
@@ -623,7 +682,7 @@ function DriftMap({
 
 /* ================================================================ live runs */
 
-interface Frame { hour: number; canvas?: HTMLCanvasElement; bounds: [number, number, number, number]; stats: LiveStats }
+interface Frame { hour: number; canvas?: HTMLCanvasElement; bounds: [number, number, number, number]; stats: LiveStats; centre: [number, number] }
 
 /** One live run in a worker; frames land in a ref (canvases are not state) and the head is state. */
 function useLiveRun(rings: LonLat[][], volumeM3: number, forcing: Forcing, backward: boolean, hours: number, key: string) {
@@ -650,7 +709,15 @@ function useLiveRun(rings: LonLat[][], volumeM3: number, forcing: Forcing, backw
         canvas.height = f.height;
         canvas.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(f.pixels), f.width, f.height), 0, 0);
       }
-      frames.current.push({ hour: f.hour, canvas, bounds: f.bounds, stats: f.stats });
+      // Opacity-weighted centre of the oil, for sliding between frames.
+      let sx = 0, sy = 0, sw = 0;
+      for (let y = 0; y < f.height; y += 2) for (let x = 0; x < f.width; x += 2) {
+        const a = f.pixels[(y * f.width + x) * 4 + 3];
+        if (a) { sx += x * a; sy += y * a; sw += a; }
+      }
+      const [w, so, ea, n] = f.bounds;
+      const centre: [number, number] = sw ? [w + ((sx / sw + 0.5) / f.width) * (ea - w), n - ((sy / sw + 0.5) / f.height) * (n - so)] : [(w + ea) / 2, (so + n) / 2];
+      frames.current.push({ hour: f.hour, canvas, bounds: f.bounds, stats: f.stats, centre });
       head.current = f.hour;
       setHeadH(f.hour);
     };

@@ -212,3 +212,17 @@
 .fc-prob li > small { color: var(--ink-muted); text-align: right; }
 .fc-prob-bar { height: 8px; border-radius: 4px; background: var(--panel-sunken); }
 .fc-prob-bar i { display: block; height: 100%; border-radius: 4px; background: var(--warning); transform-origin: 0 50%; }
+
+/* Callouts: a short leader off the feature, then one small line of text. */
+.fc-callout-anchor { overflow: visible; }
+.fc-callout { position: absolute; left: 0; top: 0; display: block; pointer-events: none; }
+.fc-callout i { position: absolute; left: 0; width: 1px; height: 22px; background: rgb(255 255 255 / 0.75); }
+.fc-callout.is-up i { bottom: 0; }
+.fc-callout.is-down i { top: 0; }
+.fc-callout b { position: absolute; left: -1px; display: inline-flex; align-items: baseline; gap: 4px; padding: 1px 6px; border-radius: 4px; background: rgb(11 15 20 / 0.82); color: #fff; font-size: 10.5px; font-weight: 700; line-height: 1.5; white-space: nowrap; }
+.fc-callout.is-up b { bottom: 22px; }
+.fc-callout.is-down b { top: 22px; }
+.fc-callout small { color: rgb(255 255 255 / 0.65); font-size: 9.5px; font-weight: 500; }
+.fc-callout.is-step b { box-shadow: inset 2px 0 0 #6fa8ea; }
+.fc-callout.is-source b { box-shadow: inset 2px 0 0 #ffb547; }
+.fc-callout.is-slick b { box-shadow: inset 2px 0 0 #ff8a3c; }

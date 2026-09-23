@@ -225,6 +225,16 @@ export function Workspace({ slickId }: { slickId: string }) {
           ))}
         </nav>
 
+        {tabId === 'response' && (
+          <div className="ws-pages is-dense" role="group" aria-label="Response pages">
+            {RESPONSE_PANELS.map(({ id, label, icon: Icon }) => (
+              <button key={id} type="button" aria-pressed={responsePanel === id} onClick={() => setResponsePanel(id)} title={label} aria-label={label}>
+                <Icon size={14} /><span>{label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {tabId === 'temporal' && (
           <div className="ws-pages" role="group" aria-label="Forecast pages">
             {FORECAST_PANELS.map(({ id, label, icon: Icon }) => (
@@ -286,20 +296,12 @@ export function Workspace({ slickId }: { slickId: string }) {
         <MapPage slick={slick} incident={incident} incidentId={incidentId} />
       ) : tabId === 'detection' && detectionPanel === 'provenance' ? (
         <ProvenancePage slick={slick} incident={incident} incidentId={incidentId} />
+      ) : tabId === 'response' ? (
+        <ForecastPage slick={slick} incident={incident} incidentId={incidentId} page="overview" setPage={setForecastPanel} direction={forecastDirection} setDirection={setForecastDirection} response={{ page: responsePanel, setPage: setResponsePanel }} />
       ) : tabId === 'temporal' ? (
         <ForecastPage slick={slick} incident={incident} incidentId={incidentId} page={forecastPanel} setPage={setForecastPanel} direction={forecastDirection} setDirection={setForecastDirection} />
       ) : (
-      <div className={`ws-split ${tabId === 'detection' ? 'ws-split-flat' : ''} ${tabId === 'response' ? 'ws-split-detection ws-split-response' : ''}`}>
-        {tabId === 'response' && (
-          <aside className="ws-detection-nav" aria-label="Response views">
-            {RESPONSE_PANELS.map(({ id, label, icon: Icon }) => (
-              <button key={id} type="button" aria-current={responsePanel === id ? 'page' : undefined} onClick={() => setResponsePanel(id)}>
-                <Icon size={17} strokeWidth={1.8} />
-                <span>{label}</span>
-              </button>
-            ))}
-          </aside>
-        )}
+      <div className={`ws-split ${tabId === 'detection' ? 'ws-split-flat' : ''}`}>
         {/* The map, edge to edge. The slick is its default child, so a stage
           * with no chart of its own still shows the thing being investigated. */}
         {/* Two rows, like Spills: the chart, and under it the dock a stage's
