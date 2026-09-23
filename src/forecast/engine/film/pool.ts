@@ -57,6 +57,7 @@ function resolve(v: Float64Array[], f: number, bi: number, bj: number, flags: Ui
     hb: v[6], aU: v[7], aV: v[8], cW: v[9], cU: v[10], cV: v[11], res: v[12],
   };
 }
+
 export class SweepPool {
   private readonly ctrl = new Int32Array(new SharedArrayBuffer(8)); // [pending, failed]
   private slabs: { sab: SharedArrayBuffer; flags: Uint8Array; views: Float64Array[][] }[] = [];
@@ -173,3 +174,4 @@ export function createSweepThread(): (msg: ThreadMessage) => void {
     }
   };
 }
+

@@ -25,8 +25,6 @@ export interface ReducedBlock {
   vFace: Float64Array;
   landPad: Uint8Array | null;
   res: Float64Array;
-  /** Last `activeBlocks` pass that listed this block. */
-  stamp: number;
 }
 
 type ReducedField = 'h';
@@ -247,7 +245,7 @@ export class SparseReducedMaster {
     let b = this.blocks.get(key(bi, bj));
     if (b) return b;
     const N = this.B * this.B, f = () => new Float64Array(N), faceX = new Float64Array((this.B + 2 * G + 1) * (this.B + 2 * G)), faceY = new Float64Array((this.B + 2 * G) * (this.B + 2 * G + 1));
-    b = { bi, bj, h: f(), nh: f(), uFace: faceX, vFace: faceY, landPad: this.landMask(bi, bj), res: new Float64Array(RES), stamp: 0 };
+    b = { bi, bj, h: f(), nh: f(), uFace: faceX, vFace: faceY, landPad: this.landMask(bi, bj), res: new Float64Array(RES) };
     this.blocks.set(key(bi, bj), b);
     this.kernels.currentStats(b, this.hAlloc);
     if (Number.isFinite(this.anomT)) this.kernels.flowBlock(b, this.flow, this.anomT);
@@ -270,7 +268,7 @@ export class SparseReducedMaster {
     let nearEdge = false;
     for (const b of list) {
       before += b.res[0]; after += b.res[1]; [b.h, b.nh] = [b.nh, b.h];
-      if (!nearEdge && b.res[3] >= 0) nearEdge = this.missingNeighbour(b);
+      nearEdge ||= b.res[3] >= 0 && (b.res[2] < GROW_TRIGGER || b.res[3] >= this.B - GROW_TRIGGER || b.res[4] < GROW_TRIGGER || b.res[5] >= this.B - GROW_TRIGGER);
     }
     this.totalThickness += after - before;
     this.budget.trimmed += (before - after) * this.dx * this.dx;
@@ -279,36 +277,19 @@ export class SparseReducedMaster {
     this.prof.commit += now() - t0;
   }
 
-  // Oil within the trigger band of an edge whose neighbour is not allocated yet.
-  // Once a slick spans several blocks most of them sit near an internal edge, so
-  // testing the edge alone would call grow() on nearly every substep.
-  private missingNeighbour(b: ReducedBlock) {
-    const w = b.res[2] < GROW_TRIGGER ? -1 : 0, e = b.res[3] >= this.B - GROW_TRIGGER ? 1 : 0;
-    const s = b.res[4] < GROW_TRIGGER ? -1 : 0, n = b.res[5] >= this.B - GROW_TRIGGER ? 1 : 0;
-    for (let dj = s; dj <= n; dj++) for (let di = w; di <= e; di++) {
-      if ((di || dj) && !this.blocks.has(key(b.bi + di, b.bj + dj))) return true;
-    }
-    return false;
-  }
-
-  // Reused across substeps: at 10 m this runs hundreds of times a simulated minute.
-  private readonly active: ReducedBlock[] = [];
-  private generation = 0;
-
   private activeBlocks() {
-    const active = this.active, gen = ++this.generation;
-    active.length = 0;
-    const mark = (b: ReducedBlock | undefined) => { if (b && b.stamp !== gen) { b.stamp = gen; active.push(b); } };
+    const active = new Set<number>();
     for (const b of this.blocks.values()) {
       if (b.res[3] < 0) continue;
-      mark(b);
+      active.add(key(b.bi, b.bj));
       const w = b.res[2] < G, e = b.res[3] >= this.B - G, s = b.res[4] < G, n = b.res[5] >= this.B - G;
       for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
         if ((di < 0 && !w) || (di > 0 && !e) || (dj < 0 && !s) || (dj > 0 && !n)) continue;
-        mark(this.blocks.get(key(b.bi + di, b.bj + dj)));
+        const neighbor = this.blocks.get(key(b.bi + di, b.bj + dj));
+        if (neighbor) active.add(key(neighbor.bi, neighbor.bj));
       }
     }
-    return active;
+    return [...active].map((k) => this.blocks.get(k)!).filter(Boolean);
   }
 
   private grow(retire = false) {

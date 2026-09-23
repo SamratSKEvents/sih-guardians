@@ -55,7 +55,7 @@ const DECK: Record<Kind, string> = {
   tug: '<rect x="-3.5" y="-5" width="7" height="7" rx="1.5" class="b"/><circle cy="8" r="2" class="d"/>',
   other: '<rect x="-3" y="-2" width="6" height="8" rx="1.5" class="b"/>',
 };
-function shipIcon(v: MapVessel, tone: string) {
+export function shipIcon(v: MapVessel, tone: string) {
   const px = Math.round(Math.min(40, Math.max(15, 11 + v.lengthM / 10)));
   return L.divIcon({
     className: `dm-ship is-${tone}`,
@@ -64,8 +64,8 @@ function shipIcon(v: MapVessel, tone: string) {
     iconAnchor: [px / 2, px / 2],
   });
 }
-const chip = (text: string, cls = '') => L.divIcon({ className: 'dm-chip-anchor', html: `<span class="dm-chip ${cls}">${text}</span>`, iconSize: [0, 0] });
-const tone = (v: MapVessel, sel?: string) => (v.id === sel ? 'selected' : v.rank && v.rank <= 3 ? 'candidate' : v.gaps.length ? 'gap' : v.kind === 'fishing' ? 'fishing' : 'traffic');
+export const chip = (text: string, cls = '') => L.divIcon({ className: 'dm-chip-anchor', html: `<span class="dm-chip ${cls}">${text}</span>`, iconSize: [0, 0] });
+export const tone = (v: MapVessel, sel?: string) => (v.id === sel ? 'selected' : v.rank && v.rank <= 3 ? 'candidate' : v.gaps.length ? 'gap' : v.kind === 'fishing' ? 'fishing' : 'traffic');
 
 /* ------------------------------------------------------------------ page */
 

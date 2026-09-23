@@ -48,6 +48,7 @@ import { DetectionStage } from './stages/Detection';
 import { OriginStage } from './stages/Origin';
 import { VesselsStage } from './stages/Vessels';
 import { ForecastStage } from './stages/Forecast';
+import { ForecastPage } from './stages/ForecastPage';
 import { ResponseStage } from './stages/Response';
 import { EvidenceStage } from './stages/Evidence';
 import './workspace.css';
@@ -71,9 +72,9 @@ export type ResponsePanel = 'overview' | 'containment' | 'assets' | 'surveillanc
 
 const FORECAST_PANELS = [
   { id: 'overview', label: 'Overview', icon: LayoutGrid },
-  { id: 'environment', label: 'Environmental data', icon: Database },
+  { id: 'environment', label: 'Environment', icon: Database },
   { id: 'impact', label: 'Shoreline impact', icon: Pentagon },
-  { id: 'vessels', label: 'Vessel context', icon: Ship },
+  { id: 'vessels', label: 'Vessels', icon: Ship },
 ] as const;
 
 const RESPONSE_PANELS = [
@@ -224,6 +225,16 @@ export function Workspace({ slickId }: { slickId: string }) {
           ))}
         </nav>
 
+        {tabId === 'temporal' && (
+          <div className="ws-pages" role="group" aria-label="Forecast pages">
+            {FORECAST_PANELS.map(({ id, label, icon: Icon }) => (
+              <button key={id} type="button" aria-pressed={forecastPanel === id} onClick={() => setForecastPanel(id)}>
+                <Icon size={14} />{label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {tabId === 'detection' && (
           <div className="ws-pages" role="group" aria-label="Detection pages">
             {DETECTION_PAGES.map(({ id, label, icon: Icon }) => (
@@ -275,23 +286,10 @@ export function Workspace({ slickId }: { slickId: string }) {
         <MapPage slick={slick} incident={incident} incidentId={incidentId} />
       ) : tabId === 'detection' && detectionPanel === 'provenance' ? (
         <ProvenancePage slick={slick} incident={incident} incidentId={incidentId} />
+      ) : tabId === 'temporal' ? (
+        <ForecastPage slick={slick} incident={incident} incidentId={incidentId} page={forecastPanel} setPage={setForecastPanel} direction={forecastDirection} setDirection={setForecastDirection} />
       ) : (
-      <div className={`ws-split ${tabId === 'detection' ? 'ws-split-flat' : ''} ${tabId === 'temporal' ? 'ws-split-detection ws-split-forecast' : ''} ${tabId === 'response' ? 'ws-split-detection ws-split-response' : ''}`}>
-        {tabId === 'temporal' && (
-          <aside className="ws-detection-nav" aria-label="Forecast and impact views">
-            {FORECAST_PANELS.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                type="button"
-                aria-current={forecastPanel === id ? 'page' : undefined}
-                onClick={() => setForecastPanel(id)}
-              >
-                <Icon size={17} strokeWidth={1.8} />
-                <span>{label}</span>
-              </button>
-            ))}
-          </aside>
-        )}
+      <div className={`ws-split ${tabId === 'detection' ? 'ws-split-flat' : ''} ${tabId === 'response' ? 'ws-split-detection ws-split-response' : ''}`}>
         {tabId === 'response' && (
           <aside className="ws-detection-nav" aria-label="Response views">
             {RESPONSE_PANELS.map(({ id, label, icon: Icon }) => (
@@ -370,8 +368,8 @@ export function Workspace({ slickId }: { slickId: string }) {
               slick={slick}
               incident={incident}
               incidentId={incidentId}
-              enabled={tabId === 'temporal' && stage.id === 'forecast' && !(forecastPanel === 'overview' && forecastDirection === 'backward')}
-              horizonEnabled={tabId === 'temporal' && stage.id === 'forecast' && !(forecastPanel === 'overview' && forecastDirection === 'backward')}
+              enabled={false}
+              horizonEnabled={false}
             >
               <StageHosts value={{ map: mapHost, dock: dockHost, slick, setHasChart }}>
                 <Body slick={slick} incident={incident} incidentId={incidentId} detectionPanel={detectionPanel === 'map' ? 'vessels' : detectionPanel} forecastPanel={forecastPanel} forecastDirection={forecastDirection} setForecastDirection={setForecastDirection} responsePanel={responsePanel} setResponsePanel={setResponsePanel} />
