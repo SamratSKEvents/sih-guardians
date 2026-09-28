@@ -1,11 +1,10 @@
-import { token } from '../design/token';
 /**
  * Landing, section four: "From uncertainty to actionable clarity".
  *
  * Two stacks of three map layers, tilted flat like sheets on a table: without
  * GUARDIANS (grey, scattered) and with it (lit, resolved), split by a glowing
- * seam. Four cards on the reef below set each manual step against its
- * GUARDIANS replacement, and bob with the swell once revealed.
+ * seam. Each sheet carries a note: the manual step on the left, what
+ * GUARDIANS does instead on the right. The sheets sway on the swell.
  *
  * On first scroll into view each stack fans out from a single sheet into its
  * three layers — the data coming apart into its parts — the seam draws down,
@@ -13,7 +12,6 @@ import { token } from '../design/token';
  */
 
 import { useEffect, useState, type CSSProperties } from 'react';
-import { Crosshair, Leaf, Shield, Zap, type LucideIcon } from 'lucide-react';
 import bg from '../../images/s4-bg.webp';
 import w1 from '../../images/s4-1.webp';
 import w2 from '../../images/s4-2.webp';
@@ -27,12 +25,12 @@ import './impact.css';
 const WITHOUT = [w1, w2, w3];
 const WITH = [g1, g2, g3];
 
-const BENEFITS: { icon: LucideIcon; tone: string; title: string; before: string; after: string }[] = [
-  { icon: Zap, tone: token('--teal-200-c'), title: 'Faster Response', before: 'Analysts comb SAR scenes by hand; days to confirm a slick.', after: 'Slicks flagged and drift forecast within hours.' },
-  { icon: Crosshair, tone: token('--green-200'), title: 'Stronger Attribution', before: 'Suspects guessed from partial AIS logs.', after: 'Vessels ranked by track overlap and AIS gaps.' },
-  { icon: Shield, tone: token('--blue-300-d'), title: 'Defensible Evidence', before: 'Findings scattered across emails and spreadsheets.', after: 'One traceable report, every step sourced.' },
-  { icon: Leaf, tone: token('--lime-200-b'), title: 'Better Protection', before: 'Booms go out after oil reaches the coast.', after: 'Sensitive sites warned ahead of landfall.' },
-];
+/* One note per sheet, top to bottom: detection, vessels, drift. Each manual
+ * step on the left is answered by the sheet opposite it on the right. */
+const NOTES = {
+  without: ['Analysts comb SAR scenes by hand, days to confirm a slick', 'Suspects guessed from partial AIS logs', 'Booms go out after oil reaches the coast'],
+  with: ['Slick flagged and outlined within hours', 'Vessels ranked by track overlap and AIS gaps', '72 h drift forecast warns sites before landfall'],
+};
 
 /* Counted from the app's own data: public/data/catalog and public/data/incidents. */
 const STATS: { value: number; suffix?: string; label: string }[] = [
@@ -74,6 +72,9 @@ function Stack({ images, side }: { images: string[]; side: 'without' | 'with' })
           <img src={src} alt="" loading="lazy" />
         </div>
       ))}
+      <ol className="imp-notes">
+        {NOTES[side].map((note, i) => <li key={note} style={{ '--l': i } as CSSProperties}>{note}</li>)}
+      </ol>
     </div>
   );
 }
@@ -92,6 +93,8 @@ export function Impact() {
         <h2>From uncertainty<br />to <span>actionable clarity</span></h2>
         <p>GUARDIANS turns complex ocean data into clear answers,<br />helping investigators respond faster, hold polluters responsible,<br />and protect our oceans.</p>
       </header>
+
+      <StatsBand />
 
       <div className="imp-compare">
         <div className="imp-side">
@@ -119,23 +122,6 @@ export function Impact() {
         </div>
       </div>
 
-      <ul className="imp-benefits">
-        {BENEFITS.map((b, i) => {
-          const Icon = b.icon;
-          return (
-            <li key={b.title} style={{ '--i': i, '--tone': b.tone } as CSSProperties}>
-              <Icon strokeWidth={1.5} />
-              <h3>{b.title}</h3>
-              <dl>
-                <div className="imp-before"><dt>Manual today</dt><dd>{b.before}</dd></div>
-                <div className="imp-after"><dt>With GUARDIANS</dt><dd>{b.after}</dd></div>
-              </dl>
-            </li>
-          );
-        })}
-      </ul>
-
-      <StatsBand />
     </section>
   );
 }
