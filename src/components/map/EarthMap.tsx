@@ -391,7 +391,7 @@ function EarthCanvas({
     slickAtRef.current = '';
     viewerRef.current?.scene.requestRender();
     if (flyToSlick) {
-      viewerRef.current?.camera.flyTo({ destination: Cartesian3.fromDegrees(slickCentroid[0], slickCentroid[1], 350_000), duration: 2.5 });
+      viewerRef.current?.camera.flyTo({ destination: Cartesian3.fromDegrees(slickCentroid[0], slickCentroid[1], 60_000), duration: 2.5 });
     }
   }, [slickCentroid, flyToSlick]);
 

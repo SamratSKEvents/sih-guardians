@@ -8,7 +8,9 @@
 
 .driver-popover.gt-pop {
   width: 360px;
-  max-width: calc(100vw - 2 * var(--space-6));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
   padding: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
@@ -17,6 +19,30 @@
   color: var(--ink);
   font-family: inherit;
 }
+/* Placement: CSS anchor positioning against the spotlit element, overriding
+ * the inline top/left driver writes. Each side spans away from the anchor's
+ * start edge; with no room it flips, and a target too big for any side (a
+ * full-height map) gets the card over its own centre. Top/bottom span left,
+ * so on the zoomed slick the card sits above the slick card, not over the oil. */
+.driver-active-element { anchor-name: --gt-target; }
+.driver-popover.gt-pop {
+  position: fixed;
+  inset: auto !important;
+  margin: 14px;
+  position-anchor: --gt-target;
+  position-area: bottom span-right;
+  position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline, center center;
+}
+.driver-popover.gt-pop[data-side='right'] { position-area: right span-bottom; }
+.driver-popover.gt-pop[data-side='left'] { position-area: left span-bottom; }
+.driver-popover.gt-pop[data-side='top'] { position-area: top span-left; }
+.driver-popover.gt-pop[data-side='bottom'] { position-area: bottom span-right; }
+/* Zoomed slick steps: the map's own spotlight already frames the slick. */
+.gt-clear .driver-overlay { opacity: 0; }
+
+/* driver's arrow is aimed by its own maths, which no longer place the card. */
+.gt-pop .driver-popover-arrow { display: none; }
+
 /* driver's own header and footer are replaced by the card. */
 .gt-pop .driver-popover-title,
 .gt-pop .driver-popover-description,

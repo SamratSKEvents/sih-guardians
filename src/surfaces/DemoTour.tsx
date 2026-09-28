@@ -47,9 +47,9 @@ const STEPS: Step[] = [
     body: '13,739 radar-detected oil slicks from three sources, on one globe. Drag to turn it, scroll to zoom.' },
   { view: 'map', target: { css: '.ds-legend' }, title: 'Slicks and vessels', side: 'right',
     body: 'Oil slicks are the orange shapes. AIS vessels are the ships that were near them. Slick density shows where spills cluster.' },
-  { view: 'map', target: { css: '.slick-card' }, title: 'One slick, up close', side: 'left', select: true,
+  { view: 'map', target: { css: '.slick-card' }, title: 'One slick, up close', side: 'top', select: true,
     body: 'We zoom to a slick off the Gulf of Kutch. Its card gives the size, the date of the pass and how sure the model is.' },
-  { view: 'map', target: { css: '.slick-card-open' }, title: 'Investigate it', side: 'left', select: true, investigates: true,
+  { view: 'map', target: { css: '.slick-card-open' }, title: 'Investigate it', side: 'top', select: true, investigates: true,
     body: 'Investigate opens the full case for this slick. Click it, or press Next.' },
   { view: { tab: 'detection', page: 'scene' }, target: { css: '.sc-view' }, title: 'Is it oil?', side: 'right',
     body: 'The Sentinel-1 radar scene beside the model’s oil probability. A second, independent model checks the call.' },
@@ -171,6 +171,7 @@ export function DemoTour({ onMap, onExit }: { onMap: () => void; onExit: () => v
 
     const exit = () => {
       run.current++;
+      document.body.classList.remove('gt-clear');
       drv.destroy();
       const old = card.current;
       card.current = undefined;
@@ -202,6 +203,9 @@ export function DemoTour({ onMap, onExit }: { onMap: () => void; onExit: () => v
       const el = await waitFor(step.target);
       if (my !== run.current) return;
       el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      // On the zoomed slick the map already spotlights the slick; a second
+      // dim over it only makes the oil harder to see.
+      document.body.classList.toggle('gt-clear', Boolean(step.select));
       drv.highlight({
         element: el,
         popover: {
@@ -212,6 +216,9 @@ export function DemoTour({ onMap, onExit }: { onMap: () => void; onExit: () => v
             // Driver mounts on <body>, outside the app: bring the app's theme with it.
             const theme = document.querySelector('.app')?.className.match(/theme-\w+/)?.[0];
             if (theme) pop.wrapper.classList.add(theme);
+            // Placement is CSS anchor positioning (demoTour.css), not driver's
+            // maths: it flips or falls back when the side has no room.
+            pop.wrapper.dataset.side = step.side ?? 'bottom';
             const host = document.createElement('div');
             pop.wrapper.appendChild(host);
             const old = card.current;
@@ -242,6 +249,7 @@ export function DemoTour({ onMap, onExit }: { onMap: () => void; onExit: () => v
     return () => {
       window.removeEventListener('keydown', onKey);
       offInvestigate();
+      document.body.classList.remove('gt-clear');
       run.current++;
       drv.destroy();
       const old = card.current;
