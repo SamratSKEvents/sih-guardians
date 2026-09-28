@@ -57,6 +57,7 @@ import {
 import { LayerSwatch } from '../../surfaces/swatches';
 import { fetchSlick, type GeoPolygon, type SlickFeature } from '../../api/slicks';
 import { SlickCard } from './SlickCard';
+import { onDemoSelectSlick } from '../../surfaces/demo';
 import './map.css';
 
 // No ion assets are used; an empty token stops Cesium phoning home and keeps
@@ -311,6 +312,7 @@ function EarthCanvas({
   onSlickScreen,
   slickRings,
   slickCentroid,
+  flyToSlick,
   onReadout,
   timeMode,
   dateRange,
@@ -333,6 +335,8 @@ function EarthCanvas({
   /** The record's own centroid. The click that selected it can be tens of
    *  kilometres off at world zoom, where a pixel is a wide thing. */
   slickCentroid: [number, number] | undefined;
+  /** Fly the camera to the slick once its centroid is known (the demo's pick, not a click). */
+  flyToSlick: boolean;
   onReadout: (readout: Readout) => void;
   timeMode: SlickTimeMode;
   dateRange: [number, number] | undefined;
@@ -386,7 +390,10 @@ function EarthCanvas({
     slickAnchorRef.current = Cartesian3.fromDegrees(slickCentroid[0], slickCentroid[1]);
     slickAtRef.current = '';
     viewerRef.current?.scene.requestRender();
-  }, [slickCentroid]);
+    if (flyToSlick) {
+      viewerRef.current?.camera.flyTo({ destination: Cartesian3.fromDegrees(slickCentroid[0], slickCentroid[1], 350_000), duration: 2.5 });
+    }
+  }, [slickCentroid, flyToSlick]);
 
   useEffect(() => {
     slickAtRef.current = '';
@@ -831,6 +838,13 @@ export function EarthMap({
   const [readout, setReadout] = useState<Readout>({});
   const [focusedVessel, setFocusedVessel] = useState<FocusedAisVessel>();
   const [selectedSlickId, setSelectedSlickId] = useState<string>();
+  // Set when the demo picks the slick, so the camera goes to it; a click is
+  // already looking at what it picked.
+  const [flyToSlick, setFlyToSlick] = useState(false);
+  useEffect(() => onDemoSelectSlick((id) => {
+    setFlyToSlick(true);
+    setSelectedSlickId(id);
+  }), []);
   const [slickAt, setSlickAt] = useState<SlickFocus>();
   // The selected slick's own rings, in lon/lat. Fetched once per selection and
   // projected every frame, so the spotlight is the shape of the thing rather
@@ -952,12 +966,14 @@ export function EarthMap({
         onFocus={setFocusedVessel}
         selectedSlickId={selectedSlickId}
         onSelectSlick={(id) => {
+          setFlyToSlick(false);
           setSelectedSlickId(id);
           setSlickAt(undefined);
         }}
         onSlickScreen={setSlickAt}
         slickRings={slickRings}
         slickCentroid={slickCentroid}
+        flyToSlick={flyToSlick}
         onReadout={setReadout}
         timeMode={timeMode}
         dateRange={dateRange}

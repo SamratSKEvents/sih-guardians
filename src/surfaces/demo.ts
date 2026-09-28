@@ -26,3 +26,15 @@ export function onDemoGoto(listener: (view: DemoView) => void) {
   if (current) listener(current);
   return () => void listeners.delete(listener);
 }
+
+/* The tour picking a slick on the Spills globe: the map flies to it and opens its card. */
+const slickListeners = new Set<(slickId: string) => void>();
+
+export function demoSelectSlick(slickId: string) {
+  slickListeners.forEach((listener) => listener(slickId));
+}
+
+export function onDemoSelectSlick(listener: (slickId: string) => void) {
+  slickListeners.add(listener);
+  return () => void slickListeners.delete(listener);
+}

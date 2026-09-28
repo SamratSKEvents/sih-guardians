@@ -30,32 +30,22 @@
 
 .gt-card { padding: var(--space-5) var(--space-6) var(--space-6); }
 
-/* Progress: one pip per step; the current pip fills, and is the timer. */
-.gt-pips { display: flex; gap: 2px; margin-bottom: var(--space-5); }
-.gt-pips > span { position: relative; flex: 1; height: 2px; overflow: hidden; border-radius: 1px; background: var(--line); }
-.gt-pips > span.is-done { background: var(--ink); }
-.gt-pips i {
-  position: absolute;
-  inset: 0;
-  background: var(--ink);
-  transform-origin: left;
-  animation: gt-fill linear both;
-}
-.gt-card[data-paused] .gt-pips i,
-.gt-pop:hover .gt-pips i { animation-play-state: paused; }
-@keyframes gt-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+/* Progress: one pip per step, filled up to the current one. */
+.gt-pips { display: flex; gap: 3px; margin-bottom: var(--space-5); }
+.gt-pips > span { flex: 1; height: 3px; border-radius: 2px; background: var(--line); }
+.gt-pips > span.is-done { background: var(--accent-bright); }
 
 .gt-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2); }
 .gt-step { color: var(--ink-faint); font-size: var(--text-2xs); }
 .gt-title { margin: 0 0 var(--space-3); color: var(--ink); font-size: var(--text-md); font-weight: 600; line-height: 1.25; }
 .gt-body { margin: 0; color: var(--ink-secondary); font-size: var(--text-xs); line-height: 1.65; text-wrap: pretty; }
 
-.gt-controls { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-6); }
-.gt-controls .gt-pause { margin-right: auto; }
+.gt-controls { display: flex; justify-content: flex-end; align-items: center; gap: var(--space-3); margin-top: var(--space-6); }
+/* driver resets its popover with `all: unset`; pin the primary action's fill
+ * so it never depends on hover to show. */
+.gt-pop .gt-next { background: var(--action); color: var(--action-ink); opacity: 1; }
+.gt-pop .gt-next:hover { background: var(--action-hover); }
 
 /* The spotlight's edge, in the accent: where to look. */
 .driver-active-element { outline: 2px solid var(--accent-bright); outline-offset: 8px; border-radius: var(--radius-control); }
 
-@media (prefers-reduced-motion: reduce) {
-  .gt-pips i { animation-duration: 1ms !important; animation-play-state: paused !important; transform: scaleX(1); }
-}
