@@ -86,7 +86,7 @@ export function Landing() {
           <p className="hero-lede">
             From detection to decision, GUARDIANS turns<br />ocean data into a cleaner, safer tomorrow.
           </p>
-          <a className="hero-demo" href="#/demo">▶ Watch the demo</a>
+          <a className="hero-demo" href="#/spills">▶ Watch the demo</a>
         </div>
       </main>
 

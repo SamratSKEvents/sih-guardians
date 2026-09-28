@@ -130,6 +130,14 @@ body,
     color var(--dur-fast) var(--ease-out);
 }
 
+.app-demo {
+  margin-left: auto;
+}
+
+.app-demo + .app-mode {
+  margin-left: 0;
+}
+
 .app-mode:hover {
   background: var(--panel-hover);
   color: var(--ink);

@@ -21,8 +21,9 @@
  * close button removes it.
  */
 
-import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
-import { Moon, Sun, X } from 'lucide-react';
+import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { Moon, Play, Sun, X } from 'lucide-react';
+import { Button } from './design/components/controls';
 import { useMode } from './design/useMode';
 // Loaded on first visit: the landing page never pays for the globe (Cesium) or the charts.
 const SpillsSurface = lazy(() => import('./surfaces/Spills').then((m) => ({ default: m.SpillsSurface })));
@@ -50,13 +51,21 @@ function useRoute() {
     () => '',
   );
   const id = hash.replace(/^#\/?/, '');
-  // No hash at all is the front door; an unknown one still lands on Spills.
-  // `#/demo` is Spills with the guided tour on top.
-  return { route: ROUTES.find((route) => route.id === id) ?? ROUTES[0], landing: id === '', demo: id === 'demo' };
+  // No hash at all is the front door; an unknown one (old `#/demo` links
+  // included) still lands on Spills.
+  return { route: ROUTES.find((route) => route.id === id) ?? ROUTES[0], landing: id === '' };
 }
 
 export function App() {
-  const { route, landing, demo } = useRoute();
+  const { route, landing } = useRoute();
+  // The guided tour is not a route. It starts whenever you leave the landing
+  // page for the app, however you got there, and from the Demo button.
+  const [touring, setTouring] = useState(false);
+  const wasLanding = useRef(landing);
+  useEffect(() => {
+    if (wasLanding.current && !landing) setTouring(true);
+    wasLanding.current = landing;
+  }, [landing]);
   const [tabs, setTabs] = useState<TabItem[]>([]);
   const [tabId, setTabId] = useState<string>();
   const [mode, setMode] = useMode();
@@ -95,7 +104,7 @@ export function App() {
 
   return (
     <div className={`app theme-${mode}`}>
-      {demo && <Suspense fallback={null}><DemoTour onMap={() => setTabId(undefined)} onExit={() => { window.location.hash = '#/spills'; }} /></Suspense>}
+      {touring && <Suspense fallback={null}><DemoTour onMap={() => { if (route.id !== 'spills') window.location.hash = '#/spills'; setTabId(undefined); }} onExit={() => setTouring(false)} /></Suspense>}
       <header className="app-bar">
         <a className="app-mark" href="#/" onClick={() => setTabId(undefined)}>GUARDIANS</a>
 
@@ -141,6 +150,10 @@ export function App() {
           </div>
           )}
         </nav>
+
+        <Button tone="primary" className="app-demo" onClick={() => setTouring(true)} disabled={touring}>
+          <Play size={14} strokeWidth={2} aria-hidden="true" />Demo
+        </Button>
 
         <button
           type="button"

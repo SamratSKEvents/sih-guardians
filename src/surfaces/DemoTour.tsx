@@ -1,6 +1,6 @@
 import { token as tk } from '../design/token';
 /**
- * Demo mode (`#/demo`): a guided tour of one slick, start to end.
+ * The guided tour, started on leaving the landing page or from Demo: a tour of one slick, start to end.
  *
  * driver.js dims the app and moves a spotlight onto the one thing each step
  * is about — a card, a map, a button — with the explanation beside it. This
