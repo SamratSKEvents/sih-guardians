@@ -6,8 +6,9 @@ import '@fontsource/outfit/600.css';
 import '@fontsource/outfit/700.css';
 import '@fontsource/dm-mono/400.css';
 import '@fontsource/dm-mono/500.css';
-import { App } from './App';
+// Styles first: design/token.ts reads CSS variables when modules load.
 import './styles.css';
+import { App } from './App';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

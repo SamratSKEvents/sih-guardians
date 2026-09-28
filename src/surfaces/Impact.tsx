@@ -4,7 +4,8 @@ import { token } from '../design/token';
  *
  * Two stacks of three map layers, tilted flat like sheets on a table: without
  * GUARDIANS (grey, scattered) and with it (lit, resolved), split by a glowing
- * seam. Four benefit cards sit on the reef below.
+ * seam. Four cards on the reef below set each manual step against its
+ * GUARDIANS replacement, and bob with the swell once revealed.
  *
  * On first scroll into view each stack fans out from a single sheet into its
  * three layers — the data coming apart into its parts — the seam draws down,
@@ -12,7 +13,7 @@ import { token } from '../design/token';
  */
 
 import { useEffect, useState, type CSSProperties } from 'react';
-import { ArrowRight, Crosshair, Leaf, Shield, Zap, type LucideIcon } from 'lucide-react';
+import { Crosshair, Leaf, Shield, Zap, type LucideIcon } from 'lucide-react';
 import bg from '../../images/s4-bg.webp';
 import w1 from '../../images/s4-1.webp';
 import w2 from '../../images/s4-2.webp';
@@ -26,11 +27,11 @@ import './impact.css';
 const WITHOUT = [w1, w2, w3];
 const WITH = [g1, g2, g3];
 
-const BENEFITS: { icon: LucideIcon; tone: string; title: string; body: [string, string] }[] = [
-  { icon: Zap, tone: token('--teal-200-c'), title: 'Faster Response', body: ['Get actionable insights', 'in hours, not days.'] },
-  { icon: Crosshair, tone: token('--green-200'), title: 'Stronger Attribution', body: ['Link slicks to responsible', 'vessels with clear evidence.'] },
-  { icon: Shield, tone: token('--blue-300-d'), title: 'Defensible Evidence', body: ['Every conclusion is', 'traceable and explainable.'] },
-  { icon: Leaf, tone: token('--lime-200-b'), title: 'Better Protection', body: ['Help safeguard coastlines,', 'marine life and communities.'] },
+const BENEFITS: { icon: LucideIcon; tone: string; title: string; before: string; after: string }[] = [
+  { icon: Zap, tone: token('--teal-200-c'), title: 'Faster Response', before: 'Analysts comb SAR scenes by hand; days to confirm a slick.', after: 'Slicks flagged and drift forecast within hours.' },
+  { icon: Crosshair, tone: token('--green-200'), title: 'Stronger Attribution', before: 'Suspects guessed from partial AIS logs.', after: 'Vessels ranked by track overlap and AIS gaps.' },
+  { icon: Shield, tone: token('--blue-300-d'), title: 'Defensible Evidence', before: 'Findings scattered across emails and spreadsheets.', after: 'One traceable report, every step sourced.' },
+  { icon: Leaf, tone: token('--lime-200-b'), title: 'Better Protection', before: 'Booms go out after oil reaches the coast.', after: 'Sensitive sites warned ahead of landfall.' },
 ];
 
 /* Counted from the app's own data: public/data/catalog and public/data/incidents. */
@@ -103,7 +104,6 @@ export function Impact() {
 
         <div className="imp-seam" aria-hidden="true">
           <span className="imp-seam-line" />
-          <span className="imp-seam-btn"><ArrowRight strokeWidth={1.6} /></span>
         </div>
 
         <div className="imp-side">
@@ -126,7 +126,10 @@ export function Impact() {
             <li key={b.title} style={{ '--i': i, '--tone': b.tone } as CSSProperties}>
               <Icon strokeWidth={1.5} />
               <h3>{b.title}</h3>
-              <p>{b.body[0]}<br />{b.body[1]}</p>
+              <dl>
+                <div className="imp-before"><dt>Manual today</dt><dd>{b.before}</dd></div>
+                <div className="imp-after"><dt>With GUARDIANS</dt><dd>{b.after}</dd></div>
+              </dl>
             </li>
           );
         })}
