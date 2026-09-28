@@ -44,7 +44,7 @@
   --ink: #ffffff;
   --ink-secondary: #c4c4c4;
   --ink-muted: #8d8d8d;
-  --ink-faint: var(--ink-secondary);
+  --ink-faint: #5e5e5e;
   --ink-inverse: #121411;
 
   --map-ground: #232323; /* sampled */
@@ -56,27 +56,27 @@
 
   /* The ramp in its native form. tokens.css carries the same five hues for
    * light mode, darkened only where they must hold text. */
-  --series-1: var(--clear);
-  --series-2: var(--warning);
-  --series-3: var(--watch);
-  --series-4: var(--series-4);
-  --series-5: var(--critical);
+  --series-1: #4bd452;
+  --series-2: #e6be42;
+  --series-3: #46bcea;
+  --series-4: #57e1e4;
+  --series-5: #e3464d;
 
-  --critical: var(--critical);
+  --critical: #e3464d;
   --critical-wash: #3a2024;
   --critical-ink: #ff8f95;
 
-  --warning: var(--warning);
+  --warning: #e6be42;
   --warning-wash: #3a3320;
   --warning-ink: #f0d27c;
 
-  --watch: var(--watch);
+  --watch: #46bcea;
   --watch-wash: #1c2f38;
   --watch-ink: #8ad6f4;
 
-  --clear: var(--clear);
+  --clear: #4bd452;
   --clear-wash: #1d3220;
-  --clear-ink: var(--map-clear-ink);
+  --clear-ink: #8ce791;
 
   --inactive: #8d8d8d;
   --inactive-wash: #2a2a2a;
@@ -87,19 +87,19 @@
   --slick-bar: #de9454;
   --slick-ink: #ffab6e;
 
-  --accent-bright: var(--clear);
+  --accent-bright: #4bd452;
   --accent: #2b9436;
   --accent-hover: #34ad41;
-  --accent-ink: var(--map-clear-ink);
+  --accent-ink: #8ce791;
   --accent-wash: #1d3220;
   --accent-pill: #24401f;
   --select: var(--accent-bright);
   --select-wash: #1d3220;
 
-  --action: var(--clear);
+  --action: #4bd452;
   --action-hover: #63e069;
   --action-ink: #0e2011;
-  --focus-ring: var(--clear);
+  --focus-ring: #4bd452;
 
   --scroll-thumb: #3d3d3d;
   --scroll-thumb-hover: #565656;
