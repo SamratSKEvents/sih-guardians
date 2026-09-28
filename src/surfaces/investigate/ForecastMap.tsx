@@ -6,6 +6,7 @@ import type { RunFrame } from '../../forecast/types';
 import type { SourceHypothesis } from '../../incidents/types';
 import { CODE_RGBA } from '../../forecast/palette';
 
+import { token } from '../../design/token';
 type ViewKind = 'overview' | 'backward' | 'environment' | 'impact' | 'vessels';
 type LMap = L.Map;
 
@@ -69,9 +70,9 @@ class SlickCanvas extends L.Layer {
 }
 
 const VESSELS = [
-  { name: 'Med Star', imo: '9234567', kind: 'Tanker', color: '#ffb547', offset: [-0.035, -0.018], course: 126, speed: 3.2 },
-  { name: 'Northwind', imo: '9412073', kind: 'Cargo', color: '#58d5c9', offset: [0.042, 0.012], course: 304, speed: 11.8 },
-  { name: 'Asterion', imo: '9701142', kind: 'Tanker', color: '#fa7185', offset: [0.014, -0.049], course: 82, speed: 6.4 },
+  { name: 'Med Star', imo: '9234567', kind: 'Tanker', color: token('--orange-200-k'), offset: [-0.035, -0.018], course: 126, speed: 3.2 },
+  { name: 'Northwind', imo: '9412073', kind: 'Cargo', color: token('--green-200-d'), offset: [0.042, 0.012], course: 304, speed: 11.8 },
+  { name: 'Asterion', imo: '9701142', kind: 'Tanker', color: token('--rose-300-d'), offset: [0.014, -0.049], course: 82, speed: 6.4 },
 ];
 
 function vesselRoute(lon: number, lat: number, course: number, index: number): L.LatLngExpression[] {
@@ -99,7 +100,7 @@ function addVessels(map: LMap, centre: [number, number]) {
     }).bindTooltip(`${vessel.name} · ${vessel.kind} · ${vessel.speed} kn`).addTo(map);
     L.circleMarker([lat, lon], {
       radius: 7,
-      color: '#081117',
+      color: token('--neutral-800-f'),
       weight: 2,
       fillColor: vessel.color,
       fillOpacity: 1,
@@ -115,24 +116,24 @@ function addWindAndCurrent(map: LMap, centre: [number, number], windSpeed: numbe
   const windEnd = vector(windDir, 0.09);
   const currentBearing = (Math.atan2(current[0], current[1]) * 180) / Math.PI;
   const currentEnd = vector(currentBearing, Math.max(0.035, Math.hypot(...current) * 0.12));
-  for (const [label, end, color] of [['Wind', windEnd, '#f5ad4e'], ['Surface current', currentEnd, '#27c7c8']] as const) {
+  for (const [label, end, color] of [['Wind', windEnd, token('--orange-200-g')], ['Surface current', currentEnd, token('--teal-200-b')]] as const) {
     L.polyline([[centre[1], centre[0]], end], { color, weight: 3, opacity: 0.92 }).addTo(map);
-    L.circleMarker(end, { radius: 5, color: '#10181c', weight: 1, fillColor: color, fillOpacity: 1 }).bindTooltip(label).addTo(map);
+    L.circleMarker(end, { radius: 5, color: token('--neutral-800-k'), weight: 1, fillColor: color, fillOpacity: 1 }).bindTooltip(label).addTo(map);
   }
-  L.circleMarker([centre[1], centre[0]], { radius: 4, color: '#f5ad4e', weight: 2, fillColor: '#fff0c5', fillOpacity: 1 }).bindTooltip(`${windSpeed.toFixed(1)} m/s wind`).addTo(map);
+  L.circleMarker([centre[1], centre[0]], { radius: 4, color: token('--orange-200-g'), weight: 2, fillColor: token('--amber-50'), fillOpacity: 1 }).bindTooltip(`${windSpeed.toFixed(1)} m/s wind`).addTo(map);
 }
 
 function addImpactMarkers(map: LMap, centre: [number, number]) {
   const sites = [
-    { name: 'Coastal habitat', dx: -0.09, dy: -0.05, risk: 'High', color: '#f16d64' },
-    { name: 'Shellfish beds', dx: 0.07, dy: 0.04, risk: 'Moderate', color: '#f0b34e' },
-    { name: 'Protected shoreline', dx: 0.11, dy: -0.07, risk: 'Watch', color: '#63cfb2' },
+    { name: 'Coastal habitat', dx: -0.09, dy: -0.05, risk: 'High', color: token('--red-300-e') },
+    { name: 'Shellfish beds', dx: 0.07, dy: 0.04, risk: 'Moderate', color: token('--amber-200-c') },
+    { name: 'Protected shoreline', dx: 0.11, dy: -0.07, risk: 'Watch', color: token('--green-200-e') },
   ];
   sites.forEach((site) => {
     const point: L.LatLngExpression = [centre[1] + site.dy, centre[0] + site.dx];
     L.circle(point, { radius: 1600, color: site.color, weight: 2, opacity: 0.88, fillColor: site.color, fillOpacity: 0.2 })
       .bindTooltip(`${site.name} · ${site.risk} demo risk`).addTo(map);
-    L.circleMarker(point, { radius: 5, color: '#10181c', weight: 1, fillColor: site.color, fillOpacity: 1 })
+    L.circleMarker(point, { radius: 5, color: token('--neutral-800-k'), weight: 1, fillColor: site.color, fillOpacity: 1 })
       .bindTooltip(site.name).addTo(map);
   });
 }
@@ -146,23 +147,23 @@ function addBacktrack(
 ) {
   if (hypotheses.length > 0) {
     const path = hypotheses.map(({ centre: point }) => [point.lat, point.lon] as L.LatLngTuple);
-    L.polyline(path, { color: '#a68dff', weight: 3, opacity: 0.92, dashArray: '5 7' })
+    L.polyline(path, { color: token('--blue-300-c'), weight: 3, opacity: 0.92, dashArray: '5 7' })
       .bindTooltip('Lagrangian source-support corridor · reconstructed').addTo(map);
     hypotheses.forEach((hypothesis) => {
       const at: L.LatLngTuple = [hypothesis.centre.lat, hypothesis.centre.lon];
       L.circle(at, {
         radius: hypothesis.spreadRadiusKm * 1000,
-        color: '#b5a3ff',
+        color: token('--blue-200'),
         weight: 1.5,
         opacity: 0.9,
-        fillColor: '#a68dff',
+        fillColor: token('--blue-300-c'),
         fillOpacity: 0.13,
       }).bindTooltip(`T−${hypothesis.ageHours} h support · ${hypothesis.particleCount} particles · ${hypothesis.spreadRadiusKm.toFixed(1)} km spread`).addTo(map);
       L.circleMarker(at, {
         radius: hypothesis.ageHours === hypotheses[0].ageHours ? 7 : 4.5,
-        color: '#241d48',
+        color: token('--blue-700'),
         weight: 2,
-        fillColor: '#b5a3ff',
+        fillColor: token('--blue-200'),
         fillOpacity: 1,
       }).bindTooltip(`T−${hypothesis.ageHours} h · ${new Date(hypothesis.time).toISOString()}`).addTo(map);
     });
@@ -177,10 +178,10 @@ function addBacktrack(
   ];
   const mid: [number, number] = [(centre[0] + end[0]) / 2, (centre[1] + end[1]) / 2];
   L.polyline([[centre[1], centre[0]], [mid[1] + 0.008, mid[0] - 0.007], [end[1], end[0]]], {
-    color: '#a68dff', weight: 3, opacity: 0.9, dashArray: '5 7',
+    color: token('--blue-300-c'), weight: 3, opacity: 0.9, dashArray: '5 7',
   }).bindTooltip(`Illustrative ${hours} h backtrack corridor`).addTo(map);
   L.circleMarker([end[1], end[0]], {
-    radius: 8, color: '#201b38', weight: 2, fillColor: '#a68dff', fillOpacity: 1,
+    radius: 8, color: token('--blue-800'), weight: 2, fillColor: token('--blue-300-c'), fillOpacity: 1,
   }).bindTooltip('Possible upstream source area · demo').addTo(map);
 }
 
@@ -220,7 +221,7 @@ export function ForecastMap({ slick, frame, view, windSpeed, windDir, current, b
     canvasRef.current = canvas;
     if (slick.geometry) {
       const geometryLayer = L.geoJSON(slick.geometry as unknown as GeoJSON.GeoJsonObject, {
-        style: { color: '#f59d32', weight: 2.5, fillColor: '#f59d32', fillOpacity: 0.12 },
+        style: { color: token('--orange-200-e'), weight: 2.5, fillColor: token('--orange-200-e'), fillOpacity: 0.12 },
       }).addTo(map);
       const bounds = geometryLayer.getBounds();
       if (bounds.isValid()) map.fitBounds(bounds.pad(1.2), { animate: false, maxZoom: 10 });

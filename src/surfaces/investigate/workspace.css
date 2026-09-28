@@ -1101,7 +1101,7 @@
 
 .detect-view-toggle button[aria-pressed='true'] {
   background: var(--accent);
-  color: #08141d;
+  color: var(--neutral-800-g);
   font-weight: 650;
 }
 

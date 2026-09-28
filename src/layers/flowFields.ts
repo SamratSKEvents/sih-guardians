@@ -13,8 +13,9 @@ import {
 } from 'cesium';
 import type { MapLayerController, MapLayerDefinition } from './types';
 
-const WIND_COLOR = Color.fromCssColorString('#e5edf5');
-const CURRENT_COLOR = Color.fromCssColorString('#39d5ff').withAlpha(0.68);
+import { token } from '../design/token';
+const WIND_COLOR = Color.fromCssColorString(token('--neutral-100-g'));
+const CURRENT_COLOR = Color.fromCssColorString(token('--cyan-200')).withAlpha(0.68);
 const FLOW_HEIGHT_METERS = 8_000;
 const FLOW_STEPS = 6;
 

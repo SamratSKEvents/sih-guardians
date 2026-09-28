@@ -1,3 +1,4 @@
+import { token } from '../../design/token';
 /**
  * The investigation chart, as a Cesium viewer.
  *
@@ -135,9 +136,9 @@ export function CesiumChart({
     });
     viewer.current = view;
     view.clock.shouldAnimate = false;
-    view.scene.backgroundColor = Color.fromCssColorString('#0a1420');
+    view.scene.backgroundColor = Color.fromCssColorString(token('--neutral-800-h'));
     view.scene.globe.showGroundAtmosphere = false;
-    view.scene.globe.baseColor = Color.fromCssColorString('#0a1420');
+    view.scene.globe.baseColor = Color.fromCssColorString(token('--neutral-800-h'));
     view.imageryLayers.add(
       new ImageryLayer(new UrlTemplateImageryProvider({ url: LABEL_URL, maximumLevel: MAX_LEVEL })),
     );
@@ -404,7 +405,7 @@ function draw(view: Viewer, shape: Shape, layer: MapLayer) {
           polyline: {
             positions,
             width: 7,
-            material: Color.fromCssColorString('#07131e').withAlpha(0.96),
+            material: Color.fromCssColorString(token('--neutral-800-d')).withAlpha(0.96),
           },
         });
         view.entities.add({
@@ -448,7 +449,7 @@ function draw(view: Viewer, shape: Shape, layer: MapLayer) {
         point: {
           pixelSize: (shape.radius ?? 3.5) * 2,
           color: stroke,
-          outlineColor: Color.fromCssColorString('#06111b'),
+          outlineColor: Color.fromCssColorString(token('--neutral-800-b')),
           outlineWidth: 3,
         },
       });

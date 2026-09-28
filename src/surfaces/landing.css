@@ -1,19 +1,19 @@
 /* Front-page hero. Always dark, independent of the app's mode toggle. */
 
 /* The app locks document scroll, so the landing page scrolls itself. */
-.landing { height: 100%; overflow-y: auto; scroll-behavior: smooth; background: #050a10; }
+.landing { height: 100%; overflow-y: auto; scroll-behavior: smooth; background: var(--neutral-900-c); }
 
 .hero {
-  --ink: #eef4f8;
+  --ink: var(--neutral-50-c);
   --muted: rgb(238 244 248 / 0.85);
-  --cyan: #3cc8e8;
-  --violet: #8b6cff;
+  --cyan: var(--teal-200-c);
+  --violet: var(--blue-400-g);
   position: relative;
   min-height: 100vh;
   overflow: hidden;
   color: var(--ink);
   font-family: var(--font-sans);
-  background: #060b12 center / cover no-repeat;
+  background: var(--neutral-900-d) center / cover no-repeat;
   isolation: isolate;
 }
 /* Darken the left so the copy reads over the rocks and sky. */
@@ -23,7 +23,7 @@
   inset: 0;
   z-index: -1;
   background:
-    linear-gradient(180deg, transparent 82%, #050a10 100%),   /* melts into the next section */
+    linear-gradient(180deg, transparent 82%, var(--neutral-900-c) 100%),   /* melts into the next section */
     linear-gradient(90deg, rgb(4 9 16 / 0.82) 0%, rgb(4 9 16 / 0.45) 45%, rgb(4 9 16 / 0.15) 100%);
 }
 .hero button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
@@ -165,7 +165,7 @@
   padding: 0.95rem 1.8rem;
   border-radius: 999px;
   border: 1px solid rgb(196 181 253 / 0.55);
-  background: linear-gradient(135deg, #6d4bff 0%, #8f5bff 55%, #b46cff 100%);
+  background: linear-gradient(135deg, var(--blue-400) 0%, var(--blue-400-h) 55%, var(--violet-300) 100%);
   color: #fff;
   font-size: 0.8rem;
   font-weight: 600;
@@ -239,13 +239,13 @@
 
 .sim-slick {
   fill: none;
-  stroke: #ff4a2e;
+  stroke: var(--red-300-f);
   stroke-width: 8;
   animation: breathe 5s ease-in-out infinite;
 }
 .sim-track {
   fill: none;
-  stroke: #5fe3ff;
+  stroke: var(--teal-100);
   stroke-width: 3;
   stroke-dasharray: 12 14;
   opacity: 0.55;
@@ -253,24 +253,24 @@
 }
 .sim-ripple {
   fill: none;
-  stroke: #5fc9ff;
+  stroke: var(--cyan-200-d);
   stroke-width: 2;
   transform-box: fill-box;
   transform-origin: center;
   animation: ripple 9s ease-out infinite both;
 }
-.sim-particle { fill: #d4f8ff; filter: drop-shadow(0 0 5px #5fe3ff); opacity: 1; }
+.sim-particle { fill: var(--teal-50); filter: drop-shadow(0 0 5px var(--teal-100)); opacity: 1; }
 .band > ellipse, .band > path { fill: none; stroke: #fff; stroke-width: 22; }
 .sim-ovals > * {
   fill: none;
-  stroke: #5cc6ff;
+  stroke: var(--cyan-200-c);
   stroke-width: 1.76;
   stroke-dasharray: 7 6;
   opacity: 0.9;
   animation: march 5.2s linear infinite;
 }
 .sim-ovals > .ccw { animation-direction: reverse; }
-.sim-ovals > .drift { stroke: #7ff0ff; stroke-width: 4; stroke-dasharray: 9 7; animation-duration: 2s; }
+.sim-ovals > .drift { stroke: var(--teal-100-d); stroke-width: 4; stroke-dasharray: 9 7; animation-duration: 2s; }
 
 @keyframes breathe { 0%, 100% { opacity: 0.18; } 50% { opacity: 0.66; } }
 @keyframes creep { to { stroke-dashoffset: 52; } }

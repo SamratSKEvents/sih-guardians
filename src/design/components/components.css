@@ -245,7 +245,7 @@
   margin: var(--space-2) 0;
   appearance: none;
   border-radius: 2px;
-  background: #e3e1dd;
+  background: var(--line);
   accent-color: var(--accent-bright);
   cursor: pointer;
 }
@@ -394,7 +394,7 @@ button.ds-map-label:hover {
  *
  * The solid-hue version measured 4.0:1 for critical, 2.2:1 for watch and
  * 1.0:1 for inactive, and warning only passed by hardcoding a literal
- * `#5c4207` into this file, which is its own bug. Every value here is a token
+ * `var(--amber-600-b)` into this file, which is its own bug. Every value here is a token
  * and every pair clears AA by a margin.
  */
 .ds-map-label-status {

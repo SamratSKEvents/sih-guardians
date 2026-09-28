@@ -1,3 +1,4 @@
+import { token } from '../../design/token';
 /**
  * What a stage hands the chart.
  *
@@ -104,5 +105,5 @@ export function toneCss(tone: Tone = 'slick'): string {
   const value = getComputedStyle(document.documentElement).getPropertyValue(TONE_VAR[tone]).trim();
   // A custom property can be empty before the stylesheet lands; a mark that
   // cannot be coloured is still better drawn than dropped.
-  return value || '#e2762f';
+  return value || token('--red-300');
 }

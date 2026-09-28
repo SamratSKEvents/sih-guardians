@@ -233,4 +233,4 @@ body,
 }
 
 /* Shown while a surface's chunk downloads (first visit only). */
-.app-loading { display: grid; place-items: center; height: 100%; color: var(--ink-muted, #888); font-size: 14px; letter-spacing: 0.04em; }
+.app-loading { display: grid; place-items: center; height: 100%; color: var(--ink-muted, var(--neutral-400-d)); font-size: 14px; letter-spacing: 0.04em; }

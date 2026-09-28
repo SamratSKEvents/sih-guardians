@@ -1,3 +1,4 @@
+import { token as tk } from '../design/token';
 /**
  * Demo mode (`#/demo`): a guided tour of one slick, start to end.
  *
@@ -176,7 +177,7 @@ export function DemoTour({ onMap, onExit }: { onMap: () => void; onExit: () => v
   useEffect(() => {
     const drv = driver({
       animate: true,
-      overlayColor: '#04101a',
+      overlayColor: tk('--neutral-800'),
       overlayOpacity: 0.62,
       stagePadding: 10,
       stageRadius: 14,

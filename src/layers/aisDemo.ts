@@ -16,6 +16,7 @@ import {
 import type { MapLayerDefinition } from './types';
 import { loadSlickVessels } from './slickVessels';
 
+import { token } from '../design/token';
 /**
  * Time span shown before the slick catalog's own window loads. Spills replaces
  * it with the catalog's extent as soon as that resolves.
@@ -26,19 +27,19 @@ export const AIS_DEMO_WINDOW = {
 };
 
 const VESSEL_COLORS = [Color.CYAN, Color.ORANGE, Color.LIME];
-const TRACK_COLOR = Color.fromCssColorString('#ff9f3f');
+const TRACK_COLOR = Color.fromCssColorString(token('--orange-200-i'));
 
 const AIS_FOCUS_STYLE = {
   haloColor: Color.WHITE,
   haloSize: 52,
-  selectedPathColor: Color.fromCssColorString('#ffd95a'),
+  selectedPathColor: Color.fromCssColorString(token('--amber-100-d')),
   selectedPathWidth: 8,
   normalPathWidth: 2,
 };
 
 function shipIcon(color: Color) {
   const fill = color.toCssColorString();
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M32 3C21 9 13 22 13 39c0 10 7 18 19 22 12-4 19-12 19-22C51 22 43 9 32 3Z" fill="white" stroke="#17191f" stroke-width="6" stroke-linejoin="round"/><path d="M32 13c-7 6-11 15-11 25 0 6 4 11 11 14 7-3 11-8 11-14 0-10-4-19-11-25Z" fill="${fill}" stroke="#17191f" stroke-width="2"/></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M32 3C21 9 13 22 13 39c0 10 7 18 19 22 12-4 19-12 19-22C51 22 43 9 32 3Z" fill="white" stroke=token('--neutral-800-m') stroke-width="6" stroke-linejoin="round"/><path d="M32 13c-7 6-11 15-11 25 0 6 4 11 11 14 7-3 11-8 11-14 0-10-4-19-11-25Z" fill="${fill}" stroke=token('--neutral-800-m') stroke-width="2"/></svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 

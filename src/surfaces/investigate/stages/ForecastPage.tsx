@@ -1,3 +1,4 @@
+import { token } from '../../../design/token';
 /**
  * Forecast & impact. The Slick Drift Lab's run around the detected slick.
  *
@@ -63,7 +64,7 @@ const DEFAULTS: Record<ForecastPanel, LayerKey[]> = {
 const STEP_HOURS = [6, 12, 24];
 /** How far back the trace and the clock go. */
 const BACK_H = 24;
-const STEP_FILL = ['#b9dcff', '#6fa8ea', '#2f6fc4'];
+const STEP_FILL = [token('--sky-100'), token('--sky-300-b'), token('--sky-500')];
 const SPEEDS = [[60, '1×'], [300, '5×'], [900, '15×'], [1800, '30×'], [2400, '40×']] as const;
 const COMPASS = (d: number) => ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'][Math.round((((d % 360) + 360) % 360) / 22.5) % 16];
 const ll = ([lon, lat]: Pt | LonLat): L.LatLngTuple => [lat, lon];
@@ -574,8 +575,8 @@ function DriftMap({
 
     if (shown.has('borders') && landRings) for (const r of landRings) {
       if (!r.some((q) => near(q as Pt, 150))) continue;
-      L.polyline(r.map(ll), { color: '#061218', weight: 5, opacity: 0.8, interactive: false }).addTo(g);
-      L.polyline(r.map(ll), { color: '#a8efc5', weight: 2.2, interactive: false }).addTo(g);
+      L.polyline(r.map(ll), { color: token('--neutral-800-c'), weight: 5, opacity: 0.8, interactive: false }).addTo(g);
+      L.polyline(r.map(ll), { color: token('--lime-100'), weight: 2.2, interactive: false }).addTo(g);
     }
     if (shown.has('protected')) for (const a of PROTECTED.filter((x) => near(x.at, 120))) {
       hover(L.circle(ll(a.at), { radius: a.radiusKm * 1000, className: 'dm-protected' }), () => card(a.name, a.kind, [['Radius', `${a.radiusKm} km`], ['From slick', `${f1(Math.max(0, kmBetween(a.at, centre) - a.radiusKm))} km to edge`]])).addTo(g);
@@ -601,12 +602,12 @@ function DriftMap({
     }
     if (shown.has('source') && bwd.length > 1) {
       const src = origin;
-      L.polyline([centre, ...bwd.filter((s) => !src || s.hour >= src.hour).map((s) => s.centre)].map(ll), { color: '#ffb547', weight: 2, dashArray: '3 6', interactive: false }).addTo(g);
+      L.polyline([centre, ...bwd.filter((s) => !src || s.hour >= src.hour).map((s) => s.centre)].map(ll), { color: token('--orange-200-k'), weight: 2, dashArray: '3 6', interactive: false }).addTo(g);
       if (src && src.hull.length > 2) hover(L.polygon((src.rings?.length ? src.rings : [src.hull]).map((r) => r.map(ll)), { className: 'fc-source' }), () => card('Estimated origin', `${signed(src.hour)} · reverse-time particle ensemble`, [['From slick', `${f1(kmBetween(centre, src.centre as Pt))} km ${COMPASS(bearingOf(centre, src.centre as Pt))}`], ['Area', `${f2(src.areaKm2)} km²`]])).addTo(g);
       if (backward) for (const hr of [-6, -12, -18]) {
         const s = bwd.find((x) => x.hour === hr);
         if (!s) continue;
-        L.circleMarker(ll(s.centre), { radius: 4, color: '#fff', weight: 1.5, fillColor: '#ffb547', fillOpacity: 1, interactive: false }).addTo(g);
+        L.circleMarker(ll(s.centre), { radius: 4, color: '#fff', weight: 1.5, fillColor: token('--orange-200-k'), fillOpacity: 1, interactive: false }).addTo(g);
         L.marker(ll(s.centre), { icon: callout(signed(hr).replace('.0', ''), 'is-source', hr % 6 === 0), interactive: false }).addTo(g);
       }
       if (src) L.marker(ll(src.centre), { icon: callout('Origin', 'is-source', false, signed(src.hour).replace('.0', '')), interactive: false }).addTo(g);
@@ -614,13 +615,13 @@ function DriftMap({
     if (shown.has('coast')) for (const c of coast) {
       if (c.hour === null) continue;
       const hr = c.hour;
-      hover(L.circleMarker(ll(c.at), { radius: 3.2, stroke: false, fillColor: hr <= 6 ? '#e3464d' : hr <= 12 ? '#ff7a3d' : '#f5c542', fillOpacity: 0.95 }), () => card('Oil reaches this coast', `+${hr} h · ${when.format(t0 + hr * 3_600_000)} UTC`, [['Risk band', hr <= 12 ? '0–12 h (high)' : '12–24 h (medium)'], ['Nearest town', [...TOWNS].sort((x, y) => kmBetween(x.at, c.at as Pt) - kmBetween(y.at, c.at as Pt))[0]?.name]])).addTo(g);
+      hover(L.circleMarker(ll(c.at), { radius: 3.2, stroke: false, fillColor: hr <= 6 ? token('--series-5') : hr <= 12 ? token('--red-300-i') : token('--amber-200-g'), fillOpacity: 0.95 }), () => card('Oil reaches this coast', `+${hr} h · ${when.format(t0 + hr * 3_600_000)} UTC`, [['Risk band', hr <= 12 ? '0–12 h (high)' : '12–24 h (medium)'], ['Nearest town', [...TOWNS].sort((x, y) => kmBetween(x.at, c.at as Pt) - kmBetween(y.at, c.at as Pt))[0]?.name]])).addTo(g);
     }
     if (shown.has('sites')) for (const s of SITES.filter((x) => near(x.at, 80))) {
       hover(L.marker(ll(s.at), { icon: L.divIcon({ className: 'dm-site', html: `<i class="dm-site-dot is-${s.kind}"></i>`, iconSize: [12, 12] }) }), () => card(s.name, s.operator, [['Type', s.kind === 'spm' ? 'Single-point mooring' : s.kind === 'platform' ? 'Offshore platform' : 'Oil terminal'], ['From slick', `${f1(kmBetween(s.at, centre))} km`]])).addTo(g);
     }
     if (shown.has('towns')) for (const t of TOWNS.filter((x) => near(x.at, 120))) {
-      hover(L.circleMarker(ll(t.at), { radius: 5, color: '#0b0f14', weight: 1.5, fillColor: '#ffffff', fillOpacity: 1 }), () => { const first = coast.filter((c) => c.hour !== null && kmBetween(t.at, c.at as Pt) < 8).map((c) => c.hour as number); return card(t.name, 'Coastal town', [['From slick', `${f1(kmBetween(t.at, centre))} km`], ['Oil arrives', first.length ? `+${Math.min(...first)} h` : 'not within 24 h']]); }).addTo(g);
+      hover(L.circleMarker(ll(t.at), { radius: 5, color: token('--neutral-800-i'), weight: 1.5, fillColor: '#ffffff', fillOpacity: 1 }), () => { const first = coast.filter((c) => c.hour !== null && kmBetween(t.at, c.at as Pt) < 8).map((c) => c.hour as number); return card(t.name, 'Coastal town', [['From slick', `${f1(kmBetween(t.at, centre))} km`], ['Oil arrives', first.length ? `+${Math.min(...first)} h` : 'not within 24 h']]); }).addTo(g);
       L.marker(ll(t.at), { icon: L.divIcon({ className: 'dm-chip-anchor', html: `<span class="fc-town">${t.name}</span>`, iconSize: [0, 0] }), interactive: false }).addTo(g);
     }
     if (shown.has('tracks')) for (const v of vessels) {
@@ -636,7 +637,7 @@ function DriftMap({
       if (v.rank && v.rank <= 3 || v.id === selected) L.marker(ll(now.at), { icon: chip(`${v.name} · ${v.type}`, v.id === selected ? 'is-selected' : ''), interactive: false }).addTo(g);
     }
     if (shown.has('observed')) {
-      for (const r of rings) hover(L.polygon(r.map((q) => ll(q as Pt)), { color: '#ff8a3c', weight: 2, fillColor: '#ff8a3c', fillOpacity: 0.28 }), () => card('Detected slick', `T0 · ${when.format(t0)} UTC`, [['Parts', rings.length]])).addTo(g);
+      for (const r of rings) hover(L.polygon(r.map((q) => ll(q as Pt)), { color: token('--orange-300-h'), weight: 2, fillColor: token('--orange-300-h'), fillOpacity: 0.28 }), () => card('Detected slick', `T0 · ${when.format(t0)} UTC`, [['Parts', rings.length]])).addTo(g);
       L.marker(ll(centre), { icon: callout('T0', 'is-slick', false, 'detected'), interactive: false }).addTo(g);
     }
   }, [shown, fwd.length, bwd.length, coast, vessels, selected, landRings, envelope.length, envRings, backward, origin?.hour]);
@@ -648,7 +649,7 @@ function DriftMap({
     if (!backward || !shown.has('source') || !cloudAt?.length) return;
     const g = L.layerGroup().addTo(map.current!);
     cloudGroup.current = g;
-    for (const p of cloudAt) L.circleMarker(ll(p), { radius: 1.8, stroke: false, fillColor: '#ffcf70', fillOpacity: 0.8, interactive: false }).addTo(g);
+    for (const p of cloudAt) L.circleMarker(ll(p), { radius: 1.8, stroke: false, fillColor: token('--amber-100'), fillOpacity: 0.8, interactive: false }).addTo(g);
   }, [cloudAt, backward, shown]);
 
   // The Response tab's own layers, redrawn as the clock moves.
@@ -675,7 +676,7 @@ function DriftMap({
       ? [forcing.windSpeed * Math.sin((((forcing.windDirDeg + (backward ? 180 : 0)) * Math.PI) / 180)), forcing.windSpeed * Math.cos((((forcing.windDirDeg + (backward ? 180 : 0)) * Math.PI) / 180))]
       : [backward ? -forcing.driftU : forcing.driftU, backward ? -forcing.driftV : forcing.driftV];
     for (const kind of kinds) {
-      const colour = kind === 'wind' ? '#f59e0b' : '#1597cf';
+      const colour = kind === 'wind' ? token('--orange-200-f') : token('--cyan-400');
       const off = kind === 'current' ? stepPx / 2 : 0;
       for (let y = 70 + off / 2; y < size.y - 40; y += stepPx) for (let x = 30 + off; x < size.x; x += stepPx) {
         const at = m.containerPointToLatLng([x, y]);
@@ -692,7 +693,7 @@ function DriftMap({
         const right = [tip[0] - (dx / len) * 5 - nx * 3.5, tip[1] - (dy / len) * 5 - ny * 3.5];
         for (const line of [[tail, tip], [left, tip], [right, tip]]) {
           const lls = line.map(([px, py]) => m.containerPointToLatLng([px, py]));
-          L.polyline(lls, { color: '#071a22', weight: 4.6, opacity: 0.84, interactive: false }).addTo(g);
+          L.polyline(lls, { color: token('--neutral-800-e'), weight: 4.6, opacity: 0.84, interactive: false }).addTo(g);
           L.polyline(lls, { color: colour, weight: 2.15, interactive: false }).addTo(g);
         }
       }
@@ -941,7 +942,7 @@ function Overview({ d, fwd, bwd, stats, backward, forcing, areaM2, volumeM3, sho
             <tbody>
               {rows.map((s, i) => s ? (
                 <tr key={s.hour}>
-                  <td><span className="fc-swatch" style={{ background: s.hour === 0 ? '#ff8a3c' : backward ? '#ffb547' : STEP_FILL[i - 1] }} />{s.hour === 0 ? 'Now' : signed(s.hour)}</td>
+                  <td><span className="fc-swatch" style={{ background: s.hour === 0 ? token('--orange-300-h') : backward ? token('--orange-200-k') : STEP_FILL[i - 1] }} />{s.hour === 0 ? 'Now' : signed(s.hour)}</td>
                   <td className="num">{when.format(t0 + s.hour * 3_600_000).split(', ').at(-1)}</td>
                   <td className="is-num">{f2(s.areaKm2)}</td>
                   {!backward && <><td className="is-num">{pct(s.afloat, s)}</td>

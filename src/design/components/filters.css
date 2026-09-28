@@ -198,7 +198,7 @@
   height: 5px;
   translate: 0 -50%;
   border-radius: 99px;
-  background: #e3e1dd;
+  background: var(--line);
 }
 
 .ds-range-fill {
@@ -293,7 +293,7 @@
   height: 5px;
   appearance: none;
   border-radius: 99px;
-  background: #e3e1dd;
+  background: var(--line);
   accent-color: var(--accent);
   cursor: pointer;
 }

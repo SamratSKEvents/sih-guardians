@@ -1,3 +1,4 @@
+import { token } from '../../design/token';
 /**
  * The globe: a 2D/3D Earth over a selectable basemap, the registered map
  * layers, and the controls that belong to the map itself.
@@ -429,7 +430,7 @@ function EarthCanvas({
     viewer.clock.shouldAnimate = false;
 
     const { scene } = viewer;
-    scene.backgroundColor = Color.fromCssColorString('#05070a');
+    scene.backgroundColor = Color.fromCssColorString(token('--neutral-900'));
     // Ground atmosphere washes the surface pale blue, which on a dark globe
     // reads as haze rather than air. The sky atmosphere stays, so the limb
     // still reads as a planet.

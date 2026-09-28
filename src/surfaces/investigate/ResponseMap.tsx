@@ -4,13 +4,14 @@ import 'leaflet/dist/leaflet.css';
 import { Layers } from 'lucide-react';
 import type { SlickFeature } from '../../api/slicks';
 
+import { token } from '../../design/token';
 export type ResponsePanel = 'overview' | 'containment' | 'assets' | 'surveillance' | 'cleanup' | 'sampling' | 'alerts';
 
 const ASSETS = [
-  { name: 'Containment Boom A', status: 'On scene', dx: -0.035, dy: -0.015, color: '#38c582', type: 'boom' },
-  { name: 'Skimmer 01', status: 'En route · 2.1 h', dx: -0.105, dy: -0.055, color: '#38c582', type: 'ship' },
-  { name: 'Response Vessel 1', status: 'Standby', dx: -0.13, dy: 0.12, color: '#38c582', type: 'ship' },
-  { name: 'Supply Vessel 1', status: 'Unavailable', dx: 0.1, dy: -0.11, color: '#ed5d68', type: 'ship' },
+  { name: 'Containment Boom A', status: 'On scene', dx: -0.035, dy: -0.015, color: token('--lime-300-d'), type: 'boom' },
+  { name: 'Skimmer 01', status: 'En route · 2.1 h', dx: -0.105, dy: -0.055, color: token('--lime-300-d'), type: 'ship' },
+  { name: 'Response Vessel 1', status: 'Standby', dx: -0.13, dy: 0.12, color: token('--lime-300-d'), type: 'ship' },
+  { name: 'Supply Vessel 1', status: 'Unavailable', dx: 0.1, dy: -0.11, color: token('--rose-300-b'), type: 'ship' },
 ];
 
 function label(name: string, detail: string, tone: string) {
@@ -47,7 +48,7 @@ export function ResponseMap({ slick, panel, hour }: { slick: SlickFeature; panel
     L.control.zoom({ position: 'bottomright' }).addTo(map);
     L.control.scale({ position: 'bottomright', maxWidth: 90, metric: true, imperial: false }).addTo(map);
     const geo = slick.geometry && L.geoJSON(slick.geometry as unknown as GeoJSON.GeoJsonObject, {
-      style: { color: '#f49a36', weight: 2.5, fillColor: '#d87532', fillOpacity: 0.44 },
+      style: { color: token('--orange-200-d'), weight: 2.5, fillColor: token('--orange-300-d'), fillOpacity: 0.44 },
     }).addTo(map);
     const bounds = geo?.getBounds();
     if (bounds?.isValid()) map.fitBounds(bounds.pad(2.2), { animate: false, maxZoom: 9 });
@@ -67,14 +68,14 @@ export function ResponseMap({ slick, panel, hour }: { slick: SlickFeature; panel
     const stageSouth = at(0.17, -0.08);
     if (enabled.forecast) {
       const radiusKm = 9 + Math.max(0, hour - 6) * 0.82;
-      L.circle([oilCenter[1], oilCenter[0]], { radius: radiusKm * 1000, color: '#b29aff', weight: 2, dashArray: '6 8', fillColor: '#8769dd', fillOpacity: 0.15 }).addTo(group);
-      L.polyline([[oilCenter[1], oilCenter[0]], [oilCenter[1] + 0.018, oilCenter[0] + 0.028], [oilCenter[1] + 0.032, oilCenter[0] + 0.071]], { color: '#b29aff', weight: 2.2, dashArray: '4 8' }).addTo(group);
+      L.circle([oilCenter[1], oilCenter[0]], { radius: radiusKm * 1000, color: token('--blue-300-e'), weight: 2, dashArray: '6 8', fillColor: token('--blue-400-e'), fillOpacity: 0.15 }).addTo(group);
+      L.polyline([[oilCenter[1], oilCenter[0]], [oilCenter[1] + 0.018, oilCenter[0] + 0.028], [oilCenter[1] + 0.032, oilCenter[0] + 0.071]], { color: token('--blue-300-e'), weight: 2.2, dashArray: '4 8' }).addTo(group);
       L.marker([oilCenter[1] + 0.035, oilCenter[0] + 0.07], { icon: label('24 h forecast', 'potential spread', 'forecast') }).addTo(group);
     }
     if (enabled.sensitive) {
       const coast = [[centre[1] + 0.27, centre[0] + 0.31], [centre[1] + 0.16, centre[0] + 0.29], [centre[1] + 0.05, centre[0] + 0.32], [centre[1] - 0.04, centre[0] + 0.3], [centre[1] - 0.15, centre[0] + 0.34], [centre[1] - 0.28, centre[0] + 0.3]] as L.LatLngExpression[];
-      L.polyline(coast.slice(0, 4), { color: '#ec725f', weight: 5, opacity: 0.9 }).addTo(group);
-      L.polyline(coast.slice(3), { color: '#efbd49', weight: 5, opacity: 0.9 }).addTo(group);
+      L.polyline(coast.slice(0, 4), { color: token('--red-300-c'), weight: 5, opacity: 0.9 }).addTo(group);
+      L.polyline(coast.slice(3), { color: token('--amber-200-b'), weight: 5, opacity: 0.9 }).addTo(group);
       L.marker([centre[1] + 0.17, centre[0] + 0.31], { icon: label('Sensitive habitat', 'HIGH PRIORITY', 'warning') }).addTo(group);
       L.marker([centre[1] - 0.13, centre[0] + 0.33], { icon: label('North Coastline', `${Math.max(6, Math.round(hour * 1.5))} km at risk`, 'warning') }).addTo(group);
     }
@@ -82,9 +83,9 @@ export function ResponseMap({ slick, panel, hour }: { slick: SlickFeature; panel
       ASSETS.forEach((asset, index) => {
         const [lon, lat] = at(asset.dx, asset.dy);
         L.polyline(assetPath(lon, lat, index), { color: asset.color, weight: 2, opacity: 0.83, dashArray: asset.status.startsWith('Unavailable') ? '3 7' : '4 7' }).addTo(group);
-        L.circleMarker([lat, lon], { radius: asset.type === 'boom' ? 8 : 6, color: '#10252a', weight: 2, fillColor: asset.color, fillOpacity: 1 })
+        L.circleMarker([lat, lon], { radius: asset.type === 'boom' ? 8 : 6, color: token('--neutral-800-l'), weight: 2, fillColor: asset.color, fillOpacity: 1 })
           .bindTooltip(`${asset.name} · ${asset.status}`).addTo(group);
-        L.marker([lat, lon], { icon: label(asset.name, asset.status, asset.color === '#ed5d68' ? 'unavailable' : 'asset') }).addTo(group);
+        L.marker([lat, lon], { icon: label(asset.name, asset.status, asset.color === token('--rose-300-b') ? 'unavailable' : 'asset') }).addTo(group);
       });
       L.marker([stageNorth[1], stageNorth[0]], { icon: label('Staging Point North', 'RESPONSE BASE', 'station') }).addTo(group);
       L.marker([stageSouth[1], stageSouth[0]], { icon: label('Staging Point South', 'RESPONSE BASE', 'station') }).addTo(group);
@@ -94,7 +95,7 @@ export function ResponseMap({ slick, panel, hour }: { slick: SlickFeature; panel
       for (const [i, origin] of [first, second].entries()) {
         const end = at(origin[0] - centre[0] + 0.06, origin[1] - centre[1] + 0.04);
         const route = [[origin[1], origin[0]], [origin[1] + 0.03, origin[0] + 0.11], [end[1], end[0]], [end[1] - 0.018, end[0] - 0.025]] as L.LatLngExpression[];
-        L.polygon(route, { color: '#35d0cb', weight: 1.5, dashArray: '4 7', fillColor: '#35d0cb', fillOpacity: 0.06 }).addTo(group);
+        L.polygon(route, { color: token('--green-200-b'), weight: 1.5, dashArray: '4 7', fillColor: token('--green-200-b'), fillOpacity: 0.06 }).addTo(group);
         L.marker(route[0], { icon: label(`Surveillance S-${i + 1}`, i ? 'SHORELINE ASSESSMENT' : 'EDGE VERIFICATION', 'mission') }).addTo(group);
       }
     }
@@ -106,11 +107,11 @@ export function ResponseMap({ slick, panel, hour }: { slick: SlickFeature; panel
         { id: 'S-4', detail: 'down-current', pos: at(0.1, -0.12) },
         { id: 'B-1', detail: 'background', pos: at(-0.23, -0.15) },
       ];
-      stations.forEach((station, i) => L.circleMarker([station.pos[1], station.pos[0]], { radius: 5.5, color: '#f2fbff', weight: 2, fillColor: i === 4 ? '#3985ff' : '#30bd8b', fillOpacity: 1 })
+      stations.forEach((station, i) => L.circleMarker([station.pos[1], station.pos[0]], { radius: 5.5, color: token('--neutral-50-g'), weight: 2, fillColor: i === 4 ? token('--sky-400-c') : token('--green-300-f'), fillOpacity: 1 })
         .bindTooltip(`${station.id} · ${station.detail}`).addTo(group));
     }
     if (enabled.slick && slick.geometry) L.geoJSON(slick.geometry as unknown as GeoJSON.GeoJsonObject, {
-      style: { color: '#ffae43', weight: 2.5, fillColor: '#b85b34', fillOpacity: 0.42 },
+      style: { color: token('--orange-200-j'), weight: 2.5, fillColor: token('--red-400'), fillOpacity: 0.42 },
     }).addTo(group);
     return () => { map.removeLayer(group); };
   }, [slick, panel, hour, centre, enabled]);

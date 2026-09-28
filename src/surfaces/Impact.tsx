@@ -1,3 +1,4 @@
+import { token } from '../design/token';
 /**
  * Landing, section four: "From uncertainty to actionable clarity".
  *
@@ -26,10 +27,10 @@ const WITHOUT = [w1, w2, w3];
 const WITH = [g1, g2, g3];
 
 const BENEFITS: { icon: LucideIcon; tone: string; title: string; body: [string, string] }[] = [
-  { icon: Zap, tone: '#3cc8e8', title: 'Faster Response', body: ['Get actionable insights', 'in hours, not days.'] },
-  { icon: Crosshair, tone: '#34d399', title: 'Stronger Attribution', body: ['Link slicks to responsible', 'vessels with clear evidence.'] },
-  { icon: Shield, tone: '#a78bfa', title: 'Defensible Evidence', body: ['Every conclusion is', 'traceable and explainable.'] },
-  { icon: Leaf, tone: '#4ade80', title: 'Better Protection', body: ['Help safeguard coastlines,', 'marine life and communities.'] },
+  { icon: Zap, tone: token('--teal-200-c'), title: 'Faster Response', body: ['Get actionable insights', 'in hours, not days.'] },
+  { icon: Crosshair, tone: token('--green-200'), title: 'Stronger Attribution', body: ['Link slicks to responsible', 'vessels with clear evidence.'] },
+  { icon: Shield, tone: token('--blue-300-d'), title: 'Defensible Evidence', body: ['Every conclusion is', 'traceable and explainable.'] },
+  { icon: Leaf, tone: token('--lime-200-b'), title: 'Better Protection', body: ['Help safeguard coastlines,', 'marine life and communities.'] },
 ];
 
 /* Counted from the app's own data: public/data/catalog and public/data/incidents. */

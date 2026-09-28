@@ -1,3 +1,4 @@
+import { token } from '../../../design/token';
 /**
  * Response: the map layers, timeline events and panes for the plan in
  * `responsePlan.ts`. Rendered inside the Forecast page's frame, so the map,
@@ -56,14 +57,14 @@ export const RESPONSE_DEFAULTS: Record<ResponsePanel, string[]> = {
   alerts: ['live', 'observed', 'alerts'],
 };
 
-const COLOUR: Record<string, string> = { 'on scene': '#35c46a', 'en route': '#35c46a', standby: '#9aa7b3', unavailable: '#e3464d' };
+const COLOUR: Record<string, string> = { 'on scene': token('--lime-300-c'), 'en route': token('--lime-300-c'), standby: token('--neutral-300-b'), unavailable: token('--series-5') };
 const HULL = 'M0,-14 C3.6,-10 5,-6 5,-1 L5,12 Q5,14 3,14 L-3,14 Q-5,14 -5,12 L-5,-1 C-5,-6 -3.6,-10 0,-14 Z';
 const PLANE = 'M0,-13 L2,-4 L12,1 L12,3.5 L2,1 L1.5,9 L5,11.5 L5,13 L0,12 L-5,13 L-5,11.5 L-1.5,9 L-2,1 L-12,3.5 L-12,1 L-2,-4 Z';
 const DRONE = 'M-9,-9 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 M9,-9 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 M-9,9 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 M9,9 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 M-3,-3 h6 v6 h-6 Z M-7,-7 L7,7 M7,-7 L-7,7';
 const bearing = ([x1, y1]: Pt, [x2, y2]: Pt) => (Math.atan2((x2 - x1) * Math.cos((y1 * Math.PI) / 180), y2 - y1) * 180) / Math.PI;
 const icon = (path: string, colour: string, deg: number, size = 26, stroke = false) => L.divIcon({
   className: 'rs-icon',
-  html: `<svg viewBox="-15 -15 30 30" width="${size}" height="${size}" style="transform:rotate(${deg}deg)"><path d="${path}" fill="${stroke ? 'none' : colour}" stroke="${stroke ? colour : '#0b0f14'}" stroke-width="${stroke ? 1.6 : 1.2}"/></svg>`,
+  html: `<svg viewBox="-15 -15 30 30" width="${size}" height="${size}" style="transform:rotate(${deg}deg)"><path d="${path}" fill="${stroke ? 'none' : colour}" stroke="${stroke ? colour : token('--neutral-800-i')}" stroke-width="${stroke ? 1.6 : 1.2}"/></svg>`,
   iconSize: [size, size], iconAnchor: [size / 2, size / 2],
 });
 const chip = (text: string, cls = '') => L.divIcon({ className: 'dm-chip-anchor', html: `<span class="dm-chip rs-chip ${cls}">${text}</span>`, iconSize: [0, 0] });
@@ -85,8 +86,8 @@ export function drawResponse(g: L.LayerGroup, plan: Plan, shown: Set<string>, t:
   if (shown.has('booms')) for (const b of plan.booms.filter((x) => page === 'containment' || isDeployed(x, state))) {
     const on = isDeployed(b, state);
     const sel = picked === `boom:${b.id}`;
-    const col = on ? '#35c46a' : b.recommended ? '#e0a21b' : '#9aa7b3';
-    L.polyline(b.line.map(ll), { color: sel ? '#ffffff' : '#0b0f14', weight: sel ? 10 : 7, opacity: sel ? 0.9 : 0.7, interactive: false }).addTo(g);
+    const col = on ? token('--lime-300-c') : b.recommended ? token('--amber-200') : token('--neutral-300-b');
+    L.polyline(b.line.map(ll), { color: sel ? '#ffffff' : token('--neutral-800-i'), weight: sel ? 10 : 7, opacity: sel ? 0.9 : 0.7, interactive: false }).addTo(g);
     const hit = hover(L.polyline(b.line.map(ll), { color: col, weight: 14, opacity: 0.001 }), () => card(b.name, `${b.kind === 'offshore' ? 'Offshore interception' : 'Shoreline protection'} · ${on ? 'deployed' : b.recommended ? 'recommended' : 'candidate'}`, [['Length', `${f1(b.lengthKm)} km`], ['Oil reaches line', b.atH !== null ? `+${b.atH} h` : 'not within 24 h'], ['Ready by', signed(b.readyH)], ['Protects', b.protects]]));
     hit.on('click', () => onPick(`boom:${b.id}`));
     hit.addTo(g);
@@ -95,19 +96,19 @@ export function drawResponse(g: L.LayerGroup, plan: Plan, shown: Set<string>, t:
     if (page === 'containment' || page === 'overview') L.marker(ll(b.line[0]), { icon: chip(`${b.name}${on ? '' : b.recommended ? ' · recommended' : ''}`, on ? 'is-good' : ''), interactive: false }).addTo(g);
   }
   if (shown.has('staging')) for (const s of plan.staging) {
-    hover(L.circleMarker(ll(s.at), { radius: 7, color: '#fff', weight: 2.5, fillColor: '#2f6fc4', fillOpacity: 1 }), () => card(s.name, 'Staging point', [['Assets based here', plan.assets.filter((a) => a.home === s.at).map((a) => a.name).join(', ') || '—']])).addTo(g);
+    hover(L.circleMarker(ll(s.at), { radius: 7, color: '#fff', weight: 2.5, fillColor: token('--sky-500'), fillOpacity: 1 }), () => card(s.name, 'Staging point', [['Assets based here', plan.assets.filter((a) => a.home === s.at).map((a) => a.name).join(', ') || '—']])).addTo(g);
     if (page === 'assets' || page === 'cleanup') L.marker(ll(s.at), { icon: chip(`⚓ ${s.name}`), interactive: false }).addTo(g);
   }
   if (shown.has('zones')) for (const z of plan.zones) {
-    const col = z.priority === 'Immediate' ? '#e3464d' : z.priority === 'High' ? '#ff7a3d' : z.priority === 'Moderate' ? '#f5c542' : '#9aa7b3';
+    const col = z.priority === 'Immediate' ? token('--series-5') : z.priority === 'High' ? token('--red-300-i') : z.priority === 'Moderate' ? token('--amber-200-g') : token('--neutral-300-b');
     for (const p of z.pts) hover(L.circleMarker(ll(p), { radius: 4.5, stroke: false, fillColor: col, fillOpacity: 0.95 }), () => card(`${z.id} · ${z.shore}`, z.name, [['Priority', z.priority], ['Oil arrives', z.first !== null ? `+${z.first} h` : 'watch only'], ['Shoreline', `${f1(z.km)} km`], ['Access', z.access]])).addTo(g);
     if (page === 'cleanup') L.marker(ll(z.pts[Math.floor(z.pts.length / 2)]), { icon: chip(`${z.id} · ${z.shore} (${z.priority})`, `is-${z.priority.toLowerCase()}`), interactive: false }).addTo(g);
   }
   if (shown.has('missions')) for (const m of plan.missions) {
     const active = t >= m.start && t <= m.end;
-    hover(L.polygon(m.box.map(ll), { color: '#4dd6d6', weight: 1.6, dashArray: '6 5', fillColor: '#4dd6d6', fillOpacity: active ? 0.2 : 0.08 }), () => card(`${m.id} · ${m.name}`, m.platform, [['Status', active ? 'In flight' : t > m.end ? 'Complete' : `Planned from ${signed(m.start)}`], ['Window', `${signed(m.start)} to ${signed(m.end)}`], ['Call sign', m.callsign], ['Sensors', m.sensors]])).addTo(g);
-    L.polyline(m.route.map(ll), { color: '#4dd6d6', weight: 1.4, dashArray: '3 5', opacity: 0.9, interactive: false }).addTo(g);
-    for (const p of m.route.filter((_, k) => k % 2 === 0)) L.circleMarker(ll(p), { radius: 3, color: '#4dd6d6', weight: 1.5, fillColor: '#0b0f14', fillOpacity: 1, interactive: false }).addTo(g);
+    hover(L.polygon(m.box.map(ll), { color: token('--teal-200-d'), weight: 1.6, dashArray: '6 5', fillColor: token('--teal-200-d'), fillOpacity: active ? 0.2 : 0.08 }), () => card(`${m.id} · ${m.name}`, m.platform, [['Status', active ? 'In flight' : t > m.end ? 'Complete' : `Planned from ${signed(m.start)}`], ['Window', `${signed(m.start)} to ${signed(m.end)}`], ['Call sign', m.callsign], ['Sensors', m.sensors]])).addTo(g);
+    L.polyline(m.route.map(ll), { color: token('--teal-200-d'), weight: 1.4, dashArray: '3 5', opacity: 0.9, interactive: false }).addTo(g);
+    for (const p of m.route.filter((_, k) => k % 2 === 0)) L.circleMarker(ll(p), { radius: 3, color: token('--teal-200-d'), weight: 1.5, fillColor: token('--neutral-800-i'), fillOpacity: 1, interactive: false }).addTo(g);
     const f = (t - m.start) / (m.end - m.start);
     const pos = alongRoute(m.route, f);
     const ahead = alongRoute(m.route, Math.min(1, f + 0.02));
@@ -117,14 +118,14 @@ export function drawResponse(g: L.LayerGroup, plan: Plan, shown: Set<string>, t:
   if (shown.has('stations') && page === 'sampling' && !shown.has('assets')) {
     const v = plan.assets.find((a) => a.kind === 'sampling')!;
     const pos = samplingPos(plan, t, state.assigned[v.id] !== undefined);
-    L.marker(ll(pos), { icon: icon(HULL, state.assigned[v.id] !== undefined ? '#35c46a' : '#9aa7b3', 0, 26), interactive: false }).addTo(g);
+    L.marker(ll(pos), { icon: icon(HULL, state.assigned[v.id] !== undefined ? token('--lime-300-c') : token('--neutral-300-b'), 0, 26), interactive: false }).addTo(g);
     L.marker(ll(pos), { icon: chip(`${v.name}${state.assigned[v.id] !== undefined ? '' : ' (not assigned)'}`, state.assigned[v.id] !== undefined ? 'is-good' : ''), interactive: false }).addTo(g);
   }
   if (shown.has('stations')) {
-    L.polyline(plan.samplingRoute.map(ll), { color: '#8be38b', weight: 2, dashArray: '6 6', interactive: false }).addTo(g);
+    L.polyline(plan.samplingRoute.map(ll), { color: token('--map-clear-ink'), weight: 2, dashArray: '6 6', interactive: false }).addTo(g);
     for (const s of plan.stations) {
       const done = t >= s.arrive;
-      hover(L.circleMarker(ll(s.at), { radius: 7, color: '#fff', weight: 2.5, fillColor: s.id === 'B-1' ? '#2f6fc4' : done ? '#35c46a' : '#0b0f14', fillOpacity: 1 }), () => card(`${s.id} · ${s.role}`, s.why, [['Priority', s.priority], ['Status', done ? 'Collected' : 'Planned'], ['Vessel arrives', plan.sampAssigned ? signed(s.arrive) : 'vessel not assigned']])).addTo(g);
+      hover(L.circleMarker(ll(s.at), { radius: 7, color: '#fff', weight: 2.5, fillColor: s.id === 'B-1' ? token('--sky-500') : done ? token('--lime-300-c') : token('--neutral-800-i'), fillOpacity: 1 }), () => card(`${s.id} · ${s.role}`, s.why, [['Priority', s.priority], ['Status', done ? 'Collected' : 'Planned'], ['Vessel arrives', plan.sampAssigned ? signed(s.arrive) : 'vessel not assigned']])).addTo(g);
       if (page === 'sampling') L.marker(ll(s.at), { icon: chip(`${s.id} · ${s.role}${done ? ' ✓' : ''}`), interactive: false }).addTo(g);
     }
   }
@@ -352,7 +353,7 @@ function ContainmentPane({ plan, t, state, setState, forcing, waveM, firstShore,
     <ul className="rs-accs">
       {group(kind).map((b) => (
         <Row key={b.id} id={b.id} open={openId === b.id} onToggle={toggle}
-          dot={isDeployed(b, state) ? '#35c46a' : b.recommended ? '#e0a21b' : '#9aa7b3'}
+          dot={isDeployed(b, state) ? token('--lime-300-c') : b.recommended ? token('--amber-200') : token('--neutral-300-b')}
           title={b.name} sub={b.protects ?? `${f1(b.lengthKm)} km · ${b.type}`}
           pill={status(b)} aside={b.atH !== null ? `oil +${b.atH} h` : 'no oil 24 h'}>
           <dl className="dm-rows rs-2col">

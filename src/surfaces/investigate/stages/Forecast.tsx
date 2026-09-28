@@ -12,10 +12,11 @@ import type { SourceHypotheses } from '../../../incidents/types';
 import { agesForScenario, selectBacktrackHypotheses } from '../../../forecast/backtrack';
 import '../forecast.css';
 
+import { token } from '../../../design/token';
 const mockVessels = [
-  { name: 'Med Star', kind: 'Tanker', imo: '9234567', distance: '0.8 km', speed: '3.2 kn', course: '126° SE', color: '#ffb547' },
-  { name: 'Northwind', kind: 'Cargo', imo: '9412073', distance: '4.6 km', speed: '11.8 kn', course: '304° NW', color: '#58d5c9' },
-  { name: 'Asterion', kind: 'Tanker', imo: '9701142', distance: '7.2 km', speed: '6.4 kn', course: '082° E', color: '#fa7185' },
+  { name: 'Med Star', kind: 'Tanker', imo: '9234567', distance: '0.8 km', speed: '3.2 kn', course: '126° SE', color: token('--orange-200-k') },
+  { name: 'Northwind', kind: 'Cargo', imo: '9412073', distance: '4.6 km', speed: '11.8 kn', course: '304° NW', color: token('--green-200-d') },
+  { name: 'Asterion', kind: 'Tanker', imo: '9701142', distance: '7.2 km', speed: '6.4 kn', course: '082° E', color: token('--rose-300-d') },
 ];
 
 function BacktrackClock({ hours, setHours, min, max, dataBacked }: { hours: number; setHours: (hours: number) => void; min: number; max: number; dataBacked: boolean }) {

@@ -12,18 +12,18 @@
 .fc-legend { max-height: calc(100% - 7rem); overflow-y: auto; }
 .fc-legend label { grid-template-columns: auto auto 1fr; }
 .fc-key { width: 16px; height: 0; border-top: 2px solid var(--map-ink-muted); }
-.fc-key.k-live { height: 9px; border: 0; border-radius: 2px; background: linear-gradient(90deg, #78bee6, #c878dc, #f0c85a, #704826); }
-.fc-key.k-observed { height: 9px; border: 2px solid #ff8a3c; border-radius: 2px; background: rgb(255 138 60 / 0.3); }
-.fc-key.k-steps { height: 9px; border: 0; border-radius: 2px; background: linear-gradient(90deg, #b9dcff, #6fa8ea, #2f6fc4); }
+.fc-key.k-live { height: 9px; border: 0; border-radius: 2px; background: linear-gradient(90deg, var(--cyan-200-e), var(--violet-300-b), var(--amber-200-d), var(--orange-600)); }
+.fc-key.k-observed { height: 9px; border: 2px solid var(--orange-300-h); border-radius: 2px; background: rgb(255 138 60 / 0.3); }
+.fc-key.k-steps { height: 9px; border: 0; border-radius: 2px; background: linear-gradient(90deg, var(--sky-100), var(--sky-300-b), var(--sky-500)); }
 .fc-key.k-track { border-top: 2px dashed #fff; }
 .fc-key.k-envelope { height: 9px; border: 1.5px dashed #fff; border-radius: 50%; }
-.fc-key.k-source { height: 9px; border: 1.5px solid #ffb547; border-radius: 2px; background: repeating-linear-gradient(45deg, rgb(255 181 71 / 0.5) 0 2px, transparent 2px 4px); }
-.fc-key.k-wind { border-color: #f59e0b; }
-.fc-key.k-current { border-color: #1597cf; }
-.fc-key.k-coast { height: 3px; border: 0; background: linear-gradient(90deg, var(--critical), #ff7a3d, #f5c542); }
-.fc-key.k-borders { border-color: #a8efc5; }
+.fc-key.k-source { height: 9px; border: 1.5px solid var(--orange-200-k); border-radius: 2px; background: repeating-linear-gradient(45deg, rgb(255 181 71 / 0.5) 0 2px, transparent 2px 4px); }
+.fc-key.k-wind { border-color: var(--orange-200-f); }
+.fc-key.k-current { border-color: var(--cyan-400); }
+.fc-key.k-coast { height: 3px; border: 0; background: linear-gradient(90deg, var(--critical), var(--red-300-i), var(--amber-200-g)); }
+.fc-key.k-borders { border-color: var(--lime-100); }
 .fc-key.k-protected { height: 9px; border: 1.5px solid var(--series-1); border-radius: 50%; background: rgb(75 212 82 / 0.2); }
-.fc-key.k-towns { width: 8px; height: 8px; margin-left: 4px; border: 1.5px solid #0b0f14; border-radius: 50%; background: #fff; }
+.fc-key.k-towns { width: 8px; height: 8px; margin-left: 4px; border: 1.5px solid var(--neutral-800-i); border-radius: 50%; background: #fff; }
 .fc-key.k-sites { width: 9px; height: 9px; border: 2px solid var(--critical); border-radius: 1px; }
 .fc-key.k-vessels { width: 10px; height: 10px; border: 0; border-radius: 50% 50% 2px 2px; background: var(--warning); }
 .fc-key.k-tracks { border-color: var(--map-ink-muted); }
@@ -43,14 +43,14 @@
 .fc-map-wrap .leaflet-bottom.leaflet-right { margin-bottom: 4px; }
 
 .fc-envelope { fill: none; stroke: #fff; stroke-width: 1.6; stroke-opacity: 0.9; }
-.fc-source { fill: rgb(255 181 71 / 0.22); stroke: #ffb547; stroke-width: 1.6; stroke-dasharray: 4 4; }
+.fc-source { fill: rgb(255 181 71 / 0.22); stroke: var(--orange-200-k); stroke-width: 1.6; stroke-dasharray: 4 4; }
 .fc-track { fill: none; stroke: rgb(255 255 255 / 0.55); stroke-width: 1.4; }
 .fc-track.is-candidate { stroke: var(--warning); stroke-width: 2; }
-.fc-track.is-selected { stroke: #4dd6ff; stroke-width: 2.4; }
+.fc-track.is-selected { stroke: var(--cyan-200-b); stroke-width: 2.4; }
 .fc-track.is-gap { stroke: var(--critical); stroke-dasharray: 5 5; }
-.fc-step-chip { background: #0f2a4a; color: #d6e9ff; }
-.fc-source-chip { background: #4a3210; color: #ffd79a; }
-.fc-slick-chip { background: #4a2410; color: #ffc7a1; }
+.fc-step-chip { background: var(--sky-700); color: var(--sky-100-b); }
+.fc-source-chip { background: var(--orange-700); color: var(--amber-100-c); }
+.fc-slick-chip { background: var(--red-700-b); color: var(--orange-100-b); }
 .fc-town { display: inline-block; transform: translate(6px, -50%); color: #fff; font-size: 11px; font-weight: 700; text-shadow: 0 0 3px #000, 0 0 6px #000; white-space: nowrap; }
 
 /* clock row: the Spills timeline (tl-*) with an event lane */
@@ -61,7 +61,7 @@
 .fc-icon:hover { background: var(--panel-hover); }
 .fc-speeds { margin-left: auto; }
 
-.fc-tl { --recon: #d99a2b; --pred: #3d7fd0; --obs: #ff8a3c; }
+.fc-tl { --recon: var(--amber-300); --pred: var(--sky-400-d); --obs: var(--orange-300-h); }
 .fc-tl-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-5); color: var(--ink-secondary); font-size: var(--text-2xs); }
 .fc-tl-legend span { display: inline-flex; align-items: center; gap: var(--space-2); }
 .fc-tl-legend i { width: 10px; height: 10px; border-radius: 50%; }
@@ -136,13 +136,13 @@
 .fc-chart .grid { stroke: var(--line-soft); }
 .fc-chart .axis { fill: var(--ink-muted); font-size: var(--text-3xs); }
 .fc-chart .fill { fill: rgb(70 140 220 / 0.18); }
-.fc-chart .stroke { fill: none; stroke: #2f6fc4; stroke-width: 2; }
+.fc-chart .stroke { fill: none; stroke: var(--sky-500); stroke-width: 2; }
 .fc-chart .fill.is-back { fill: rgb(255 181 71 / 0.2); }
-.fc-chart .stroke.is-back { stroke: #d48a1c; }
+.fc-chart .stroke.is-back { stroke: var(--orange-300-c); }
 .fc-chart .now { stroke: var(--ink); stroke-dasharray: 3 3; }
-.b-afloat { fill: #3d7fd0; background: #3d7fd0; }
-.b-evap { fill: #b9c4d0; background: #b9c4d0; }
-.b-disp { fill: #57c9c9; background: #57c9c9; }
+.b-afloat { fill: var(--sky-400-d); background: var(--sky-400-d); }
+.b-evap { fill: var(--neutral-200); background: var(--neutral-200); }
+.b-disp { fill: var(--teal-200-e); background: var(--teal-200-e); }
 .b-strand { fill: var(--critical); background: var(--critical); }
 .fc-bkey { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px var(--space-5); margin: var(--space-3) 0 0; padding: 0; list-style: none; font-size: var(--text-2xs); }
 .fc-bkey li { display: flex; align-items: center; gap: var(--space-3); }
@@ -166,14 +166,14 @@
 .fc-vec .axis { stroke: var(--line-soft); }
 .fc-vec .lbl { fill: var(--ink-muted); font-size: var(--text-3xs); }
 .fc-vec g line { stroke-width: 2.5; stroke-linecap: round; }
-.fc-vec .wind line, .fc-vec .wind circle { stroke: #f59e0b; fill: #f59e0b; }
-.fc-vec .current line, .fc-vec .current circle { stroke: #1597cf; fill: #1597cf; }
+.fc-vec .wind line, .fc-vec .wind circle { stroke: var(--orange-200-f); fill: var(--orange-200-f); }
+.fc-vec .current line, .fc-vec .current circle { stroke: var(--cyan-400); fill: var(--cyan-400); }
 .fc-vec .result line, .fc-vec .result circle { stroke: var(--ink); fill: var(--ink); }
 .fc-vec ul { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; font-size: var(--text-2xs); }
 .fc-vec li { display: flex; align-items: center; gap: var(--space-3); }
 .fc-vec li i { width: 14px; height: 3px; border-radius: 2px; background: currentColor; }
-.fc-vec li.wind { color: #c77c06; }
-.fc-vec li.current { color: #1597cf; }
+.fc-vec li.wind { color: var(--orange-300); }
+.fc-vec li.current { color: var(--cyan-400); }
 .fc-vec li b { margin-left: auto; color: var(--ink); }
 
 .fc-arrivals { display: flex; flex-direction: column; gap: 3px; font-size: var(--text-2xs); }
@@ -184,7 +184,7 @@
 .fc-arr-row > div { position: relative; height: 18px; border-radius: 3px; background: repeating-linear-gradient(90deg, var(--panel-sunken) 0 calc(25% - 1px), var(--line-soft) calc(25% - 1px) 25%); }
 .fc-arr-row i { position: absolute; top: 2px; bottom: 2px; min-width: 4px; border-radius: 3px; }
 .fc-arr-row i.is-high { background: var(--critical); }
-.fc-arr-row i.is-med { background: #ff9a3d; }
+.fc-arr-row i.is-med { background: var(--orange-200-h); }
 .fc-arr-row i b { position: absolute; left: calc(100% + 4px); top: 50%; color: var(--ink); font-size: var(--text-3xs); transform: translateY(-50%); white-space: nowrap; }
 .fc-arr-row em { position: absolute; left: var(--space-3); top: 50%; color: var(--ink-muted); font-style: normal; transform: translateY(-50%); }
 .fc-rdot { width: 9px; height: 9px; border-radius: 50%; background: var(--ink-faint); }
@@ -223,9 +223,9 @@
 .fc-maptag.is-up b { bottom: 22px; }
 .fc-maptag.is-down b { top: 22px; }
 .fc-maptag small { color: rgb(255 255 255 / 0.65); font-size: 9.5px; font-weight: 500; }
-.fc-maptag.is-step b { box-shadow: inset 2px 0 0 #6fa8ea; }
-.fc-maptag.is-source b { box-shadow: inset 2px 0 0 #ffb547; }
-.fc-maptag.is-slick b { box-shadow: inset 2px 0 0 #ff8a3c; }
+.fc-maptag.is-step b { box-shadow: inset 2px 0 0 var(--sky-300-b); }
+.fc-maptag.is-source b { box-shadow: inset 2px 0 0 var(--orange-200-k); }
+.fc-maptag.is-slick b { box-shadow: inset 2px 0 0 var(--orange-300-h); }
 
 /* Overview impact: one slim row, coloured by risk, leading to Shoreline impact. */
 .fc-impact { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-5); width: 100%; padding: var(--space-4) var(--space-5); border-radius: var(--radius-panel); background: var(--panel-sunken); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
