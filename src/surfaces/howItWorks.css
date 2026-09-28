@@ -1,14 +1,14 @@
 /* Landing section two: "How the System Works". Always dark, like the hero. */
 
 .hiw {
-  --ink: #eef4f8;
-  --cyan: #3cc8e8;
+  --ink: var(--neutral-50-c);
+  --cyan: var(--teal-200-c);
   position: relative;
   isolation: isolate;
   padding: 6vh 3vw 8vh;
   color: var(--ink);
   font-family: var(--font-sans);
-  background: #050a10 center bottom / cover no-repeat;
+  background: var(--neutral-900-c) center bottom / cover no-repeat;
 }
 /* Sea kept, but pushed far back so the cards carry the section. */
 .hiw::before {
@@ -49,16 +49,16 @@
 .hiw-links { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .hiw-links path {
   fill: none;
-  stroke: #7ee6ff;
+  stroke: var(--teal-100-c);
   stroke-width: 2.1;
   stroke-dasharray: 9 9;
   stroke-linecap: round;
   animation: hiw-drift 5.7s linear infinite;
 }
-.hiw-links marker path { fill: #7ee6ff; stroke: none; animation: none; }
+.hiw-links marker path { fill: var(--teal-100-c); stroke: none; animation: none; }
 .hiw-links circle {
-  fill: #0b2a38;
-  stroke: #7ee6ff;
+  fill: var(--cyan-700);
+  stroke: var(--teal-100-c);
   stroke-width: 1.75;
   filter: drop-shadow(0 0 6px rgb(94 224 255 / 0.7));
 }
@@ -71,9 +71,8 @@
   padding: 1.15em;
   border-radius: 1.1em;
   border: 1.5px solid rgb(94 224 255 / 0.6);
-  background: linear-gradient(160deg, rgb(14 44 60 / 0.82), rgb(6 22 34 / 0.88));
+  background: linear-gradient(160deg, rgb(14 44 60), rgb(6 22 34));
   box-shadow: 0 0 22px rgb(60 200 232 / 0.22), inset 0 0 18px rgb(60 200 232 / 0.08);
-  backdrop-filter: blur(6px);
   transform: perspective(1400px) rotateY(var(--ry)) rotateZ(var(--rz));
   transition: box-shadow 0.4s, border-color 0.4s;
 }
@@ -89,7 +88,7 @@
   place-items: center;
   border-radius: 50%;
   border: 2px solid var(--cyan);
-  background: #07202c;
+  background: var(--cyan-800);
   color: #fff;
   font-size: 1.15em;
   font-weight: 600;

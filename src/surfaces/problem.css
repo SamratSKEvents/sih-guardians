@@ -1,16 +1,16 @@
 /* Landing section three: "What's the Problem?". Same ground as section two. */
 
 .p3 {
-  --ink: #eef4f8;
-  --cyan: #3cc8e8;
-  --red: #ff5a4a;
+  --ink: var(--neutral-50-c);
+  --cyan: var(--teal-200-c);
+  --red: var(--red-300-h);
   position: relative;
   isolation: isolate;
   padding: 7vh 4.5vw 10vh;
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: clamp(9px, 0.95vw, 16px);
-  background: #050a10 center / cover no-repeat;
+  background: var(--neutral-900-c) center / cover no-repeat;
 }
 .p3::before {
   content: '';
@@ -105,10 +105,10 @@
   height: 0.7em;
   margin: -0.35em 0 0 -0.35em;
   border-radius: 50%;
-  background: #e8fbff;
+  background: var(--neutral-50);
   box-shadow: 0 0 0 3px rgb(60 200 232 / 0.35), 0 0 12px var(--cyan);
 }
-.p3-red .p3-pin { background: #ffd2cc; box-shadow: 0 0 0 3px rgb(255 90 74 / 0.35), 0 0 12px var(--red); }
+.p3-red .p3-pin { background: var(--red-100); box-shadow: 0 0 0 3px rgb(255 90 74 / 0.35), 0 0 12px var(--red); }
 
 .p3-chip {
   position: absolute;
@@ -119,8 +119,7 @@
   padding: 0.7em 1.1em;
   border-radius: 0.7em;
   border: 1px solid rgb(94 224 255 / 0.45);
-  background: rgb(5 18 28 / 0.82);
-  backdrop-filter: blur(6px);
+  background: rgb(5 18 28 / 0.95);
   font-size: 1em;
   font-weight: 500;
   line-height: 1.25;

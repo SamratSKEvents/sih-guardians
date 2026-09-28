@@ -1,16 +1,16 @@
 /* Landing section four: Impact. Sea above, reef below — the background carries the story. */
 
 .imp {
-  --ink: #eef4f8;
-  --cyan: #3cc8e8;
-  --red: #ff4d4d;
+  --ink: var(--neutral-50-c);
+  --cyan: var(--teal-200-c);
+  --red: var(--red-300-g);
   position: relative;
   isolation: isolate;
   padding: 9vh 4.5vw 12vh;
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: clamp(9px, 0.95vw, 16px);
-  background: #050a10 center bottom / cover no-repeat;
+  background: var(--neutral-900-c) center bottom / cover no-repeat;
   overflow: hidden;
 }
 /* Dark at the top to meet section three; clear at the bottom so the reef shows. */
@@ -19,7 +19,7 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(180deg, #050a10 0%, rgb(5 10 16 / 0.7) 18%, rgb(5 10 16 / 0.35) 55%, rgb(5 10 16 / 0.2) 100%);
+  background: linear-gradient(180deg, var(--neutral-900-c) 0%, rgb(5 10 16 / 0.7) 18%, rgb(5 10 16 / 0.35) 55%, rgb(5 10 16 / 0.2) 100%);
 }
 
 /* ── Heading ─────────────────────────────────────────── */
@@ -62,8 +62,7 @@
   gap: 0.35em;
   padding: 1em 1.4em;
   border-radius: 0.8em;
-  background: rgb(6 14 22 / 0.8);
-  backdrop-filter: blur(6px);
+  background: rgb(6 14 22 / 0.94);
   font-size: 1.05em;
   line-height: 1.4;
 }
@@ -135,7 +134,7 @@
   left: 50%;
   width: 2px;
   translate: -50% 0;
-  background: linear-gradient(180deg, transparent, var(--cyan) 20%, #bff4ff 50%, var(--cyan) 80%, transparent);
+  background: linear-gradient(180deg, transparent, var(--cyan) 20%, var(--teal-100-f) 50%, var(--cyan) 80%, transparent);
   box-shadow: 0 0 16px var(--cyan), 0 0 40px rgb(60 200 232 / 0.5);
   transform-origin: top;
 }
@@ -147,7 +146,7 @@
   height: 3.6em;
   border-radius: 50%;
   border: 1.5px solid var(--cyan);
-  background: #07202c;
+  background: var(--cyan-800);
   color: var(--ink);
   box-shadow: 0 0 20px rgb(60 200 232 / 0.5);
 }
@@ -167,8 +166,7 @@
   padding: 2em 1.5em;
   border-radius: 1em;
   border: 1px solid rgb(94 224 255 / 0.25);
-  background: rgb(6 20 30 / 0.6);
-  backdrop-filter: blur(8px);
+  background: rgb(6 20 30 / 0.92);
   text-align: center;
 }
 .imp-benefits svg { width: 2.8em; height: 2.8em; color: var(--tone); filter: drop-shadow(0 0 8px var(--tone)); }
@@ -185,8 +183,7 @@
   list-style: none;
   border-radius: 1em;
   border: 1px solid rgb(94 224 255 / 0.25);
-  background: rgb(4 14 22 / 0.7);
-  backdrop-filter: blur(8px);
+  background: rgb(4 14 22 / 0.94);
   opacity: 0;
   translate: 0 24px;
   transition: opacity 0.9s ease, translate 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
