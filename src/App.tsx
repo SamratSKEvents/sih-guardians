@@ -58,10 +58,11 @@ function useRoute() {
 
 export function App() {
   const { route, landing } = useRoute();
-  // The guided tour is not a route. It starts whenever you leave the landing
-  // page for the app, however you got there, and from the Demo button.
+  // The guided tour is not a route. It starts whenever you enter the app,
+  // from the landing page or straight from a link or reload, and from the
+  // Demo button. Starting as if from the landing page covers the direct case.
   const [touring, setTouring] = useState(false);
-  const wasLanding = useRef(landing);
+  const wasLanding = useRef(true);
   useEffect(() => {
     if (wasLanding.current && !landing) setTouring(true);
     wasLanding.current = landing;

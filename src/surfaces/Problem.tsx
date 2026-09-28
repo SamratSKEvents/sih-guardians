@@ -18,6 +18,14 @@ import './problem.css';
 /* chip: chip centre, pin: what it points at — both in % of the image. */
 interface Callout { icon: LucideIcon; label: [string, string]; chip: [number, number]; pin: [number, number] }
 
+/* A three-turn Archimedean spiral, centre out, in a 100-unit box. Drawn behind
+ * each problem pin, it turns slowly, like the oil swirling round it. */
+const SPIRAL = Array.from({ length: 121 }, (_, k) => {
+  const t = (k / 120) * 6 * Math.PI;
+  const r = 2 + (t / (6 * Math.PI)) * 46;
+  return `${k ? 'L' : 'M'}${(50 + r * Math.cos(t)).toFixed(1)} ${(50 + r * Math.sin(t)).toFixed(1)}`;
+}).join('');
+
 const PANELS: { icon: LucideIcon; title: string; body: [string, string]; img: string; tone: 'red' | 'cyan'; callouts: Callout[] }[] = [
   {
     icon: Crosshair,
@@ -72,6 +80,19 @@ export function Problem() {
 
               <div className="p3-media">
                 <img src={panel.img} alt="" loading="lazy" />
+                {/* Causes: the slick's edges shimmer, as on the hero tablet. A
+                  * displaced copy of the image, masked to the slick. */}
+                {panel.tone === 'cyan' && (
+                  <svg className="p3-warp" aria-hidden="true">
+                    <filter id="p3-shimmer" x="0" y="0" width="100%" height="100%">
+                      <feTurbulence type="fractalNoise" baseFrequency="0.02 0.045" numOctaves="2" seed="7">
+                        <animate attributeName="baseFrequency" dur="11s" repeatCount="indefinite" values="0.02 0.045;0.024 0.052;0.02 0.045" />
+                      </feTurbulence>
+                      <feDisplacementMap in="SourceGraphic" scale="6" />
+                    </filter>
+                    <image href={panel.img} width="100%" height="100%" preserveAspectRatio="xMidYMid slice" filter="url(#p3-shimmer)" />
+                  </svg>
+                )}
                 <svg className="p3-leaders" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
                   {panel.callouts.map((c, i) => (
                     <line key={i} x1={c.chip[0]} y1={c.chip[1]} x2={c.pin[0]} y2={c.pin[1]}
@@ -82,7 +103,11 @@ export function Problem() {
                   const ChipIcon = c.icon;
                   return (
                     <span key={i} style={{ '--i': i } as CSSProperties}>
-                      <span className="p3-pin" style={{ left: `${c.pin[0]}%`, top: `${c.pin[1]}%` }} />
+                      <span className="p3-pin" style={{ left: `${c.pin[0]}%`, top: `${c.pin[1]}%` }}>
+                        {panel.tone === 'red' && (
+                          <svg className="p3-spiral" viewBox="0 0 100 100" aria-hidden="true"><path d={SPIRAL} /></svg>
+                        )}
+                      </span>
                       <span className="p3-chip" style={{ left: `${c.chip[0]}%`, top: `${c.chip[1]}%` }}>
                         <ChipIcon strokeWidth={1.6} />
                         <span>{c.label[0]}<br />{c.label[1]}</span>

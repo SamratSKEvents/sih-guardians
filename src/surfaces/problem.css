@@ -89,6 +89,20 @@
 @keyframes p3-drift { from { transform: scale(1); } to { transform: scale(1.05) translate(-1%, -1%); } }
 
 /* ── Callouts ────────────────────────────────────────── */
+/* Displaced copy of the causes image, shown only along the slick (a chain of
+ * soft ellipses down its diagonal) so just the oil's edges ripple. Drifts with
+ * the image underneath so the two never slide apart. */
+.p3-warp {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(ellipse 16% 12% at 50% 32%, #000 40%, transparent), radial-gradient(ellipse 18% 14% at 66% 50%, #000 40%, transparent), radial-gradient(ellipse 16% 14% at 80% 70%, #000 40%, transparent), radial-gradient(ellipse 10% 12% at 90% 86%, #000 40%, transparent);
+  mask-image: radial-gradient(ellipse 16% 12% at 50% 32%, #000 40%, transparent), radial-gradient(ellipse 18% 14% at 66% 50%, #000 40%, transparent), radial-gradient(ellipse 16% 14% at 80% 70%, #000 40%, transparent), radial-gradient(ellipse 10% 12% at 90% 86%, #000 40%, transparent);
+  animation: p3-drift 24s ease-in-out infinite alternate;
+}
+
 .p3-leaders { position: absolute; inset: 0; width: 100%; height: 100%; }
 .p3-leaders line {
   stroke: rgb(238 244 248 / 0.85);
@@ -109,6 +123,22 @@
   box-shadow: 0 0 0 3px rgb(60 200 232 / 0.35), 0 0 12px var(--cyan);
 }
 .p3-red .p3-pin { background: var(--red-100); box-shadow: 0 0 0 3px rgb(255 90 74 / 0.35), 0 0 12px var(--red); }
+/* Faint spiral behind each problem pin: turns once every 18s and breathes in
+ * and out of view, each pin on its own beat. */
+.p3-spiral {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 5em;
+  height: 5em;
+  margin: -2.5em 0 0 -2.5em;
+  overflow: visible;
+  pointer-events: none;
+  animation: p3-spin 18s linear infinite, p3-breathe 6s ease-in-out calc(var(--i) * -1.5s) infinite;
+}
+.p3-spiral path { fill: none; stroke: var(--red); stroke-width: 1.4; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+@keyframes p3-spin { to { rotate: -360deg; } }
+@keyframes p3-breathe { 0%, 100% { opacity: 0.12; scale: 0.85; } 50% { opacity: 0.4; scale: 1; } }
 
 .p3-chip {
   position: absolute;
