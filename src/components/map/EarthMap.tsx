@@ -35,6 +35,7 @@ import {
   ScreenSpaceEventHandler,
   ScreenSpaceEventType,
   ShadowMode,
+  SkyBox,
   Math as CesiumMath,
   TileMapServiceImageryProvider,
   UrlTemplateImageryProvider,
@@ -412,6 +413,8 @@ function EarthCanvas({
       baseLayer: ImageryLayer.fromProviderAsync(
         TileMapServiceImageryProvider.fromUrl(buildModuleUrl('Assets/Textures/NaturalEarthII')),
       ),
+      // Drawn here, not Cesium's six star photos (~850 KB on a phone connection).
+      skyBox: starfield(),
       shadows: false,
       terrainShadows: ShadowMode.DISABLED,
       // Renders happen on camera change, or when the timeline moves time.
@@ -776,6 +779,29 @@ function EarthCanvas({
   }, [mode]);
 
   return <div ref={hostRef} className="earth-canvas" aria-label="Interactive Earth" />;
+}
+
+/** A cube of generated stars: same look as Cesium's default sky, nothing to download. */
+function starfield() {
+  let seed = 7;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const N = 1024; // generated, so resolution is free; 512 blurs once stretched over the sky
+  const face = () => {
+    const c = document.createElement('canvas');
+    c.width = c.height = N;
+    const g = c.getContext('2d')!;
+    g.fillStyle = '#000';
+    g.fillRect(0, 0, N, N);
+    for (let i = 0; i < 1800; i++) {
+      const b = rand() ** 4; // mostly faint, a few bright
+      g.fillStyle = `rgba(255,255,255,${0.18 + b * 0.8})`;
+      g.fillRect(rand() * N, rand() * N, 1, 1);
+    }
+    return c;
+  };
+  return new SkyBox({
+    sources: { positiveX: face(), negativeX: face(), positiveY: face(), negativeY: face(), positiveZ: face(), negativeZ: face() },
+  });
 }
 
 export function EarthMap({

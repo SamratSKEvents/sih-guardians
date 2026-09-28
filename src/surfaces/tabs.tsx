@@ -14,8 +14,10 @@
  * in it. Give `render` something real per tab when there is something real.
  */
 
-import type { ReactNode } from 'react';
-import { InvestigateSurface } from './Investigate';
+import { lazy, type ReactNode } from 'react';
+
+// Its own chunk: the investigation (forecast engine, Leaflet maps) loads when one is opened.
+const InvestigateSurface = lazy(() => import('./Investigate').then((m) => ({ default: m.InvestigateSurface })));
 import { shortId } from '../format';
 
 export const MAX_TABS = 2;

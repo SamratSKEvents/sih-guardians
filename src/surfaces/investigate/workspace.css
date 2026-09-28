@@ -1110,7 +1110,7 @@
   border-radius: 3px;
   background: var(--warning-wash);
   color: var(--warning-ink);
-  font-size: 9px;
+  font-size: var(--text-3xs);
   font-weight: 700;
   letter-spacing: 0.04em;
 }
@@ -1321,3 +1321,6 @@
 /* Seven pages: the current one is named, the rest are icons with a tooltip. */
 .ws-pages.is-dense button:not([aria-pressed='true']) { padding: 0 var(--space-4); }
 .ws-pages.is-dense button:not([aria-pressed='true']) span { display: none; }
+
+.ws-run { display: inline-flex; align-items: center; gap: var(--space-3); height: 36px; padding: 0 var(--space-5); border-radius: var(--radius-control); background: var(--accent); color: var(--action-ink, #fff); font: inherit; font-size: var(--text-sm); font-weight: 600; cursor: pointer; }
+.ws-run:hover { filter: brightness(1.05); }

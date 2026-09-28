@@ -1,0 +1,217 @@
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Time-out
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+6 retry 1 no mirror answered for [68, 23, 69, 24]
+6 [68, 23, 69, 24] 268632 bytes
+7 [69, 19, 70, 20] 286 bytes
+8 [69, 20, 70, 21] 286 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+9 retry 1 no mirror answered for [69, 21, 70, 22]
+9 [69, 21, 70, 22] 131360 bytes
+10 [69, 22, 70, 23] 1100985 bytes
+11 [69, 23, 70, 24] 10848 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Time-out
+12 [70, 15, 71, 16] 287 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+13 [70, 16, 71, 17] 287 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Time-out
+14 [70, 17, 71, 18] 287 bytes
+15 [70, 18, 71, 19] 286 bytes
+16 [70, 19, 71, 20] 286 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Time-out
+17 [70, 20, 71, 21] 225651 bytes
+18 [70, 21, 71, 22] 55991 bytes
+19 [70, 22, 71, 23] 114322 bytes
+20 [70, 23, 71, 24] 9540 bytes
+21 [71, 14, 72, 15] 286 bytes
+22 [71, 15, 72, 16] 286 bytes
+23 [71, 16, 72, 17] 286 bytes
+24 [71, 17, 72, 18] 286 bytes
+25 [71, 18, 72, 19] 286 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+26 retry 1 no mirror answered for [71, 19, 72, 20]
+26 [71, 19, 72, 20] 286 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+27 retry 1 no mirror answered for [71, 20, 72, 21]
+27 [71, 20, 72, 21] 226255 bytes
+28 [71, 21, 72, 22] 107849 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+29 retry 1 no mirror answered for [72, 14, 73, 15]
+29 [72, 14, 73, 15] 286 bytes
+30 [72, 15, 73, 16] 286 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+31 [72, 16, 73, 17] 287 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Time-out
+32 [72, 17, 73, 18] 287 bytes
+33 [72, 18, 73, 19] 433463 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+34 [72, 19, 73, 20] 273288 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Time-out
+35 [72, 20, 73, 21] 102412 bytes
+36 [73, 11, 74, 12] 8463 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+37 retry 1 no mirror answered for [73, 12, 74, 13]
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+37 retry 2 no mirror answered for [73, 12, 74, 13]
+37 [73, 12, 74, 13] 286 bytes
+38 [73, 13, 74, 14] 286 bytes
+39 [73, 14, 74, 15] 286 bytes
+40 [73, 15, 74, 16] 537514 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Time-out
+41 [73, 16, 74, 17] 228446 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+42 retry 1 no mirror answered for [73, 17, 74, 18]
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Time-out
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+42 retry 2 no mirror answered for [73, 17, 74, 18]
+42 [73, 17, 74, 18] 241071 bytes
+43 [73, 18, 74, 19] 78675 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+44 retry 1 no mirror answered for [73, 19, 74, 20]
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+44 [73, 19, 74, 20] 13883 bytes
+45 [73, 20, 74, 21] 286 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Time-out
+46 [74, 8, 75, 9] 287 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Time-out
+   https://overpass-api.de/api/interpreter HTTP Error 429: Too Many Requests
+47 retry 1 no mirror answered for [74, 9, 75, 10]
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+47 retry 2 no mirror answered for [74, 9, 75, 10]
+47 [74, 9, 75, 10] 286 bytes
+48 [74, 10, 75, 11] 286 bytes
+49 [74, 11, 75, 12] 286 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+50 retry 1 no mirror answered for [74, 12, 75, 13]
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+50 retry 2 no mirror answered for [74, 12, 75, 13]
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+50 retry 3 no mirror answered for [74, 12, 75, 13]
+50 [74, 12, 75, 13] SKIPPED: 1:50m land will be used here
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+51 [74, 13, 75, 14] 193085 bytes
+52 [74, 14, 75, 15] 443776 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+53 [74, 15, 75, 16] 52275 bytes
+54 [74, 16, 75, 17] 286 bytes
+55 [74, 17, 75, 18] 286 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+56 retry 1 no mirror answered for [74, 18, 75, 19]
+56 [74, 18, 75, 19] 286 bytes
+57 [75, 8, 76, 9] 286 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Time-out
+58 [75, 9, 76, 10] 287 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+59 [75, 10, 76, 11] 48938 bytes
+60 [75, 11, 76, 12] 307155 bytes
+61 [75, 12, 76, 13] 85860 bytes
+62 [75, 13, 76, 14] 286 bytes
+63 [76, 8, 77, 9] 119424 bytes
+64 [76, 9, 77, 10] 130563 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+65 retry 1 no mirror answered for [76, 10, 77, 11]
+65 [76, 10, 77, 11] 81502 bytes
+66 [76, 11, 77, 12] 286 bytes
+67 [76, 12, 77, 13] 286 bytes
+68 [76, 13, 77, 14] 286 bytes
+69 [77, 8, 78, 9] 224979 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+70 retry 1 no mirror answered for [77, 9, 78, 10]
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Time-out
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+70 retry 2 no mirror answered for [77, 9, 78, 10]
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Time-out
+70 [77, 9, 78, 10] 287 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+71 [77, 10, 78, 11] 287 bytes
+72 [82, 17, 83, 18] 81338 bytes
+73 [82, 18, 83, 19] 286 bytes
+74 [82, 19, 83, 20] 286 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Time-out
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+75 retry 1 no mirror answered for [83, 17, 84, 18]
+75 [83, 17, 84, 18] 198942 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Time-out
+76 [83, 18, 84, 19] 55563 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+77 [83, 19, 84, 20] 287 bytes
+78 [84, 17, 85, 18] 286 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+79 retry 1 no mirror answered for [84, 18, 85, 19]
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+79 [84, 18, 85, 19] 102332 bytes
+80 [84, 19, 85, 20] 46330 bytes
+81 [84, 20, 85, 21] 286 bytes
+82 [85, 17, 86, 18] 286 bytes
+83 [85, 18, 86, 19] 286 bytes
+84 [85, 19, 86, 20] 68206 bytes
+85 [85, 20, 86, 21] 286 bytes
+86 [85, 21, 86, 22] 286 bytes
+87 [86, 18, 87, 19] 286 bytes
+88 [86, 19, 87, 20] 39700 bytes
+89 [86, 20, 87, 21] 154543 bytes
+90 [86, 21, 87, 22] 68966 bytes
+91 [86, 22, 87, 23] 286 bytes
+92 [87, 18, 88, 19] 286 bytes
+93 [87, 19, 88, 20] 286 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+94 retry 1 no mirror answered for [87, 20, 88, 21]
+94 [87, 20, 88, 21] 40632 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Time-out
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+95 retry 1 no mirror answered for [87, 21, 88, 22]
+95 [87, 21, 88, 22] 106618 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+96 [87, 22, 88, 23] 287 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+97 [88, 19, 89, 20] 287 bytes
+98 [88, 20, 89, 21] 286 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+99 [88, 21, 89, 22] 2817846 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Time-out
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+100 retry 1 no mirror answered for [88, 22, 89, 23]
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+100 [88, 22, 89, 23] 703265 bytes
+101 [89, 19, 90, 20] 286 bytes
+102 [89, 20, 90, 21] 286 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Time-out
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+103 retry 1 no mirror answered for [89, 21, 90, 22]
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+103 [89, 21, 90, 22] 1170225 bytes
+104 [89, 22, 90, 23] 2540325 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+   https://overpass-api.de/api/interpreter HTTP Error 504: Gateway Timeout
+105 retry 1 no mirror answered for [90, 20, 91, 21]
+105 [90, 20, 91, 21] 286 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+106 [90, 21, 91, 22] 644690 bytes
+107 [90, 22, 91, 23] 621912 bytes
+108 [91, 19, 92, 20] 286 bytes
+109 [91, 20, 92, 21] 286 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+110 [91, 21, 92, 22] 596406 bytes
+111 [92, 19, 93, 20] 86951 bytes
+   https://maps.mail.ru/osm/tools/overpass/api/interpreter HTTP Error 504: Gateway Timeout
+112 [92, 20, 93, 21] 2769833 bytes
+113 [92, 21, 93, 22] 400387 bytes
+114 [93, 19, 94, 20] 5631827 bytes
+115 [93, 20, 94, 21] 1338450 bytes
+116 [93, 21, 94, 22] 286 bytes

@@ -54,7 +54,17 @@ function collect(object: TopologyObject, arcs: LonLat[][], out: LonLat[][]) {
   }
 }
 
-export async function loadLandRings(): Promise<LonLat[][]> {
+/**
+ * OpenStreetMap coastline (as land polygons) around every catalogue slick, and
+ * 1:50m Natural Earth land elsewhere, built by tools/coast/. Metre-scale
+ * shorelines where the slicks are, so oil stops at the real coast rather than
+ * at a coastline generalised by kilometres.
+ */
+const HIRES_URL = '/data/land-hires.json';
+
+let cache: Promise<LonLat[][]> | undefined;
+
+async function loadCoarse(): Promise<LonLat[][]> {
   const response = await fetch(LAND_URL);
   if (!response.ok) throw new Error(`Shoreline data request failed (${response.status}).`);
   const topology = await response.json() as Topology;
@@ -63,4 +73,12 @@ export async function loadLandRings(): Promise<LonLat[][]> {
   const rings: LonLat[][] = [];
   collect(object, decodeArcs(topology), rings);
   return rings;
+}
+
+export function loadLandRings(): Promise<LonLat[][]> {
+  cache ??= fetch(HIRES_URL)
+    .then((r) => (r.ok ? r.json() as Promise<{ rings: LonLat[][] }> : Promise.reject(new Error(String(r.status)))))
+    .then((d) => d.rings)
+    .catch(() => loadCoarse());
+  return cache;
 }

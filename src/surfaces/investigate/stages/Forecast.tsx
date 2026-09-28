@@ -206,7 +206,7 @@ export function ForecastStage({ slick, incidentId, forecastPanel, forecastDirect
               <span className="loss-title"><Activity size={16} /> Indicative loss predictor <small>mock scenario</small></span>
               <div className="loss-primary"><small>Potential response & cleanup cost</small><strong>${cleanupLow.toLocaleString()}k–${cleanupHigh.toLocaleString()}k</strong></div>
               <div className="loss-secondary"><span><b>{wildlifeLow}–{wildlifeHigh}</b><small>wildlife potentially exposed</small></span><span><b>{(4 + 16 * impactProgress).toFixed(0)}–{(9 + 31 * impactProgress).toFixed(0)} km²</b><small>sensitive habitat at risk</small></span></div>
-              <div className="loss-sparkline" aria-label={`Indicative loss increases with the forecast horizon, currently ${Math.round(impactProgress * 100)} percent`}><i style={{ width: `${Math.max(8, impactProgress * 100)}%` }} /></div>
+              <div className="loss-sparkline" aria-label={`Indicative loss increases with the forecast horizon, currently ${Math.round(impactProgress * 100)} percent`}><i style={{ transform: `scaleX(${Math.max(0.08, impactProgress)})` }} /></div>
               <small className="loss-footnote">Scenario ranges only. Costs and wildlife counts are synthetic planning placeholders, not a valuation of actual losses.</small>
             </section>
             <section className="forecast-section">

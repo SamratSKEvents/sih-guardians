@@ -4,19 +4,19 @@
  * the live oil and the clock are the same ones the forecast uses.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import {
-  AlertTriangle, BarChart3, Bell, Check, CheckCircle2, ChevronRight, Clock, ClipboardList, Crosshair, FileText, FlaskConical, Gauge, Link2, MapPin,
+  AlertTriangle, ArrowLeft, BarChart3, Bell, Check, CheckCircle2, ChevronDown, ChevronRight, Clock, ClipboardList, Crosshair, FileText, FlaskConical, Gauge, Link2, MapPin,
   Plane, Send, Shield, ShieldCheck, Ship, Target, Waves, Wind, Zap,
 } from 'lucide-react';
 import { Badge } from '../../../design/components';
 import { when } from '../../../format';
 import type { Forcing } from '../../../forecast/forcing';
 import type { ResponsePanel } from '../Workspace';
-import type { ProductContext } from '../../../products/generate';
-import { alongRoute, assetAt, assetStatus, EMPTY_STATE, type Asset, type Plan, type PlanState } from './responsePlan';
+import { alongRoute, assetAt, assetStatus, EMPTY_STATE, isDeployed, type Asset, type Plan, type PlanState } from './responsePlan';
 import { kmBetween, type Pt } from './mapData';
+import { card, hover } from './mapTip';
 
 const ll = ([lon, lat]: Pt): L.LatLngTuple => [lat, lon];
 const f1 = (v: number) => v.toFixed(1);
@@ -71,7 +71,8 @@ const chip = (text: string, cls = '') => L.divIcon({ className: 'dm-chip-anchor'
 /** What each page is about, to frame the map on when the page opens. */
 export function focusOf(plan: Plan, page: ResponsePanel, centre: Pt): Pt[] {
   const pts: Pt[] = [centre];
-  if (page === 'containment' || page === 'overview') pts.push(...plan.boomA.line, ...(page === 'containment' ? plan.boomB.line : []));
+  if (page === 'containment') pts.push(...plan.booms.flatMap((b) => b.line));
+  if (page === 'overview') pts.push(...plan.boomA.line);
   if (page === 'assets') pts.push(...plan.assets.flatMap((a) => [a.home, a.target]));
   if (page === 'surveillance') pts.push(...plan.missions.flatMap((m) => m.box));
   if (page === 'cleanup') pts.push(...plan.zones.flatMap((z) => z.pts), ...plan.staging.map((x) => x.at));
@@ -80,26 +81,31 @@ export function focusOf(plan: Plan, page: ResponsePanel, centre: Pt): Pt[] {
   return pts;
 }
 
-export function drawResponse(g: L.LayerGroup, plan: Plan, shown: Set<string>, t: number, state: PlanState, page: ResponsePanel, onPick: (id: string) => void) {
-  if (shown.has('booms')) for (const b of plan.booms.filter((x) => page === 'containment' || x.recommended)) {
-    const good = b.recommended;
-    L.polyline(b.line.map(ll), { color: '#0b0f14', weight: 7, opacity: 0.7, interactive: false }).addTo(g);
-    L.polyline(b.line.map(ll), { color: good ? '#35c46a' : '#e3464d', weight: 3.5, dashArray: good ? '8 5' : '6 6', interactive: false }).addTo(g);
-    for (const p of [b.line[0], b.line[Math.floor(b.line.length / 2)], b.line[b.line.length - 1]]) L.circleMarker(ll(p), { radius: 4, color: '#fff', weight: 1.5, fillColor: good ? '#35c46a' : '#e3464d', fillOpacity: 1, interactive: false }).addTo(g);
-    if (page === 'containment' || (page === 'overview' && good)) L.marker(ll(b.line[0]), { icon: chip(`${good ? '✓' : '✕'} Candidate Boom ${b.id} · ${good ? 'Recommended' : 'Not recommended'} · ${f1(b.lengthKm)} km`, good ? 'is-good' : 'is-bad'), interactive: false }).addTo(g);
+export function drawResponse(g: L.LayerGroup, plan: Plan, shown: Set<string>, t: number, state: PlanState, page: ResponsePanel, onPick: (id: string) => void, picked?: string) {
+  if (shown.has('booms')) for (const b of plan.booms.filter((x) => page === 'containment' || isDeployed(x, state))) {
+    const on = isDeployed(b, state);
+    const sel = picked === `boom:${b.id}`;
+    const col = on ? '#35c46a' : b.recommended ? '#e0a21b' : '#9aa7b3';
+    L.polyline(b.line.map(ll), { color: sel ? '#ffffff' : '#0b0f14', weight: sel ? 10 : 7, opacity: sel ? 0.9 : 0.7, interactive: false }).addTo(g);
+    const hit = hover(L.polyline(b.line.map(ll), { color: col, weight: 14, opacity: 0.001 }), () => card(b.name, `${b.kind === 'offshore' ? 'Offshore interception' : 'Shoreline protection'} · ${on ? 'deployed' : b.recommended ? 'recommended' : 'candidate'}`, [['Length', `${f1(b.lengthKm)} km`], ['Oil reaches line', b.atH !== null ? `+${b.atH} h` : 'not within 24 h'], ['Ready by', signed(b.readyH)], ['Protects', b.protects]]));
+    hit.on('click', () => onPick(`boom:${b.id}`));
+    hit.addTo(g);
+    L.polyline(b.line.map(ll), { color: col, weight: 3.5, dashArray: on ? undefined : '6 6', interactive: false }).addTo(g);
+    for (const p of [b.line[0], b.line[b.line.length - 1]]) L.circleMarker(ll(p), { radius: 4, color: '#fff', weight: 1.5, fillColor: col, fillOpacity: 1, interactive: false }).addTo(g);
+    if (page === 'containment' || page === 'overview') L.marker(ll(b.line[0]), { icon: chip(`${b.name}${on ? '' : b.recommended ? ' · recommended' : ''}`, on ? 'is-good' : ''), interactive: false }).addTo(g);
   }
   if (shown.has('staging')) for (const s of plan.staging) {
-    L.circleMarker(ll(s.at), { radius: 7, color: '#fff', weight: 2.5, fillColor: '#2f6fc4', fillOpacity: 1, interactive: false }).addTo(g);
+    hover(L.circleMarker(ll(s.at), { radius: 7, color: '#fff', weight: 2.5, fillColor: '#2f6fc4', fillOpacity: 1 }), () => card(s.name, 'Staging point', [['Assets based here', plan.assets.filter((a) => a.home === s.at).map((a) => a.name).join(', ') || '—']])).addTo(g);
     if (page === 'assets' || page === 'cleanup') L.marker(ll(s.at), { icon: chip(`⚓ ${s.name}`), interactive: false }).addTo(g);
   }
   if (shown.has('zones')) for (const z of plan.zones) {
     const col = z.priority === 'Immediate' ? '#e3464d' : z.priority === 'High' ? '#ff7a3d' : z.priority === 'Moderate' ? '#f5c542' : '#9aa7b3';
-    for (const p of z.pts) L.circleMarker(ll(p), { radius: 4.5, stroke: false, fillColor: col, fillOpacity: 0.95, interactive: false }).addTo(g);
+    for (const p of z.pts) hover(L.circleMarker(ll(p), { radius: 4.5, stroke: false, fillColor: col, fillOpacity: 0.95 }), () => card(`${z.id} · ${z.shore}`, z.name, [['Priority', z.priority], ['Oil arrives', z.first !== null ? `+${z.first} h` : 'watch only'], ['Shoreline', `${f1(z.km)} km`], ['Access', z.access]])).addTo(g);
     if (page === 'cleanup') L.marker(ll(z.pts[Math.floor(z.pts.length / 2)]), { icon: chip(`${z.id} · ${z.shore} (${z.priority})`, `is-${z.priority.toLowerCase()}`), interactive: false }).addTo(g);
   }
   if (shown.has('missions')) for (const m of plan.missions) {
     const active = t >= m.start && t <= m.end;
-    L.polygon(m.box.map(ll), { color: '#4dd6d6', weight: 1.6, dashArray: '6 5', fillColor: '#4dd6d6', fillOpacity: active ? 0.2 : 0.08, interactive: false }).addTo(g);
+    hover(L.polygon(m.box.map(ll), { color: '#4dd6d6', weight: 1.6, dashArray: '6 5', fillColor: '#4dd6d6', fillOpacity: active ? 0.2 : 0.08 }), () => card(`${m.id} · ${m.name}`, m.platform, [['Status', active ? 'In flight' : t > m.end ? 'Complete' : `Planned from ${signed(m.start)}`], ['Window', `${signed(m.start)} to ${signed(m.end)}`], ['Call sign', m.callsign], ['Sensors', m.sensors]])).addTo(g);
     L.polyline(m.route.map(ll), { color: '#4dd6d6', weight: 1.4, dashArray: '3 5', opacity: 0.9, interactive: false }).addTo(g);
     for (const p of m.route.filter((_, k) => k % 2 === 0)) L.circleMarker(ll(p), { radius: 3, color: '#4dd6d6', weight: 1.5, fillColor: '#0b0f14', fillOpacity: 1, interactive: false }).addTo(g);
     const f = (t - m.start) / (m.end - m.start);
@@ -118,7 +124,7 @@ export function drawResponse(g: L.LayerGroup, plan: Plan, shown: Set<string>, t:
     L.polyline(plan.samplingRoute.map(ll), { color: '#8be38b', weight: 2, dashArray: '6 6', interactive: false }).addTo(g);
     for (const s of plan.stations) {
       const done = t >= s.arrive;
-      L.circleMarker(ll(s.at), { radius: 7, color: '#fff', weight: 2.5, fillColor: s.id === 'B-1' ? '#2f6fc4' : done ? '#35c46a' : '#0b0f14', fillOpacity: 1, interactive: false }).addTo(g);
+      hover(L.circleMarker(ll(s.at), { radius: 7, color: '#fff', weight: 2.5, fillColor: s.id === 'B-1' ? '#2f6fc4' : done ? '#35c46a' : '#0b0f14', fillOpacity: 1 }), () => card(`${s.id} · ${s.role}`, s.why, [['Priority', s.priority], ['Status', done ? 'Collected' : 'Planned'], ['Vessel arrives', plan.sampAssigned ? signed(s.arrive) : 'vessel not assigned']])).addTo(g);
       if (page === 'sampling') L.marker(ll(s.at), { icon: chip(`${s.id} · ${s.role}${done ? ' ✓' : ''}`), interactive: false }).addTo(g);
     }
   }
@@ -134,12 +140,14 @@ export function drawResponse(g: L.LayerGroup, plan: Plan, shown: Set<string>, t:
     if (moving && a.kind !== 'sampling') L.polyline([a.home, a.target].map(ll), { color: COLOUR[st], weight: 2, dashArray: '2 7', opacity: 0.9, interactive: false }).addTo(g);
     const mk = L.marker(ll(pos), { icon: icon(HULL, COLOUR[st], bearing(a.home, a.target) || 0, 26) }).addTo(g);
     mk.on('click', () => onPick(a.id));
+    if (picked === a.id) L.circleMarker(ll(pos), { radius: 17, color: '#ffffff', weight: 2.5, fill: false, interactive: false }).addTo(g);
+    hover(mk, () => card(a.name, `${cap(a.kind)} · ${cap(st)}`, [['Task', a.task], ['Speed', `${a.knots} kn`], ['Crew', a.crew], ['ETA', st === 'en route' ? signed(a.arrive) : st === 'on scene' ? 'on station' : st === 'standby' ? 'awaiting assignment' : '—'], ['Note', a.note]]));
     const eta = st === 'en route' ? ` · ETA ${signed(a.arrive)}` : '';
     if (page === 'assets' || (page === 'containment' && (a.kind === 'boom' || a.kind === 'tug' || a.kind === 'skimmer')) || (page === 'sampling' && a.kind === 'sampling')) L.marker(ll(pos), { icon: chip(`${a.name} (${cap(st)}${eta})`, st === 'unavailable' ? 'is-bad' : st === 'standby' ? '' : 'is-good'), interactive: false }).addTo(g);
   }
   if (shown.has('alerts')) for (const al of plan.alerts) {
     if (!al.where || state.resolved.includes(al.id) || al.resolvedByDefault) continue;
-    L.marker(ll(al.where), { icon: L.divIcon({ className: 'rs-alert-pin', html: `<span class="is-${al.severity.toLowerCase()}">!</span>`, iconSize: [26, 26], iconAnchor: [13, 13] }), interactive: false }).addTo(g);
+    hover(L.marker(ll(al.where), { icon: L.divIcon({ className: 'rs-alert-pin', html: `<span class="is-${al.severity.toLowerCase()}">!</span>`, iconSize: [26, 26], iconAnchor: [13, 13] }) }), () => card(al.title, `${al.severity} · ${al.area}`, [['Triggered', signed(al.at)], ['Status', state.acked.includes(al.id) ? 'Acknowledged' : 'Active'], ['Action', al.action]])).addTo(g);
     if (page === 'alerts') L.marker(ll(al.where), { icon: chip(al.title, al.severity === 'High' ? 'is-bad' : ''), interactive: false }).addTo(g);
   }
 }
@@ -156,8 +164,10 @@ type Tone = 'observed' | 'predicted' | 'reconstructed' | 'critical' | 'warning';
 export function responseEvents(plan: Plan, state: PlanState) {
   const out: { h: number; label: string; detail: string; tone: Tone; to?: number; quiet?: boolean; primary?: boolean }[] = [];
   out.push({ h: Math.min(24, plan.windowH), label: 'Response window closes', detail: 'Deploy containment before this', tone: 'critical' });
-  if (plan.boomA.readyH > 0 && plan.boomA.readyH < 24) out.push({ h: plan.boomA.readyH, label: 'Boom A ready', detail: plan.boomA.vessel ?? '', tone: 'predicted' });
-  out.push({ h: plan.boomA.atH, label: 'Oil at Boom A', detail: 'Forecast oil reaches the boom line', tone: 'warning', quiet: true });
+  for (const b of plan.booms.filter((x) => isDeployed(x, state))) {
+    if (b.readyH > 0 && b.readyH < 24) out.push({ h: b.readyH, label: `${b.name} ready`, detail: b.vessel ?? '', tone: 'predicted', quiet: b.id !== 'A' });
+    if (b.atH !== null) out.push({ h: b.atH, label: `Oil at ${b.name}`, detail: 'Forecast oil reaches the boom line', tone: 'warning', quiet: true });
+  }
   for (const a of plan.assets) {
     const assigned = state.assigned[a.id] !== undefined;
     if (a.arrive > 0 && a.arrive < 24 && (a.status0 === 'en route' || assigned) && a.kind !== 'boom' && a.kind !== 'tug') out.push({ h: a.arrive, label: `${a.name.split(' ').slice(-1)[0]} on scene`, detail: a.task, tone: 'predicted', quiet: true });
@@ -184,12 +194,79 @@ const Pill = ({ v }: { v: string }) => <b className={`rs-pill is-${v.toLowerCase
 
 interface PaneProps {
   page: ResponsePanel; setPage: (p: ResponsePanel) => void; plan: Plan; t: number; t0: number; state: PlanState; setState: (fn: (s: PlanState) => PlanState) => void;
-  forcing: Forcing; waveM: number; firstShore?: number; picked?: string; setPicked: (id?: string) => void; products: ProductContext;
+  forcing: Forcing; waveM: number; firstShore?: number; picked?: string; setPicked: (id?: string) => void;
+}
+
+/** The plan's sections, reached from Overview; each section leads back to it. */
+const SECTIONS: { id: ResponsePanel; label: string; icon: typeof Bell }[] = [
+  { id: 'containment', label: 'Containment', icon: Shield },
+  { id: 'assets', label: 'Assets', icon: Ship },
+  { id: 'surveillance', label: 'Surveillance', icon: Plane },
+  { id: 'cleanup', label: 'Cleanup', icon: Waves },
+  { id: 'sampling', label: 'Sampling', icon: FlaskConical },
+  { id: 'alerts', label: 'Alerts', icon: Bell },
+];
+
+function SectionNav({ plan, t, state, setPage, forcing, waveM }: PaneProps) {
+  const c = counts(plan, t, state);
+  const shoreKm = plan.zones.reduce((x, z) => x + z.km, 0);
+  const flying = plan.missions.filter((m) => t >= m.start && t <= m.end);
+  const next = plan.missions.find((m) => m.start > t);
+  const collected = plan.stations.filter((s) => t >= s.arrive).length;
+  const alerts = activeAlerts(plan, state);
+  const high = alerts.filter((a) => a.severity === 'High').length;
+  const deployedBooms = plan.booms.filter((b) => isDeployed(b, state));
+  const rows: Record<string, { status: string; lines: [string, string] }> = {
+    containment: {
+      status: !deployedBooms.length ? 'None' : deployedBooms.every((b) => t >= b.readyH) ? 'Deployed' : 'In progress',
+      lines: [`${deployedBooms.length} of ${plan.booms.length} lines · ${f1(deployedBooms.reduce((x, b) => x + b.lengthKm, 0))} km of boom`, `Wind ${f1(forcing.windSpeed * 1.944)} kt · Hs ${f1(waveM)} m · ${plan.feasible.hsOk && plan.feasible.windOk ? 'within limits' : 'over limits'}`],
+    },
+    assets: {
+      status: c.down ? `${c.down} down` : 'Ready',
+      lines: [`${c.scene} on scene · ${c.route} en route`, `${c.standby} standby · ${c.total} total`],
+    },
+    surveillance: {
+      status: flying.length ? 'In flight' : next ? 'Planned' : 'Complete',
+      lines: [flying.length ? `${flying.map((m) => m.id).join(', ')} flying` : `${plan.missions.length} missions`, next ? `Next ${next.id} at ${signed(next.start)}` : 'No flights queued'],
+    },
+    cleanup: {
+      status: plan.zones.some((z) => z.priority === 'Immediate' || z.priority === 'High') ? 'Planning' : 'Watch',
+      lines: [`${plan.zones.length} zones · ${f1(shoreKm)} km of shore`, `${plan.zones.filter((z) => z.priority !== 'Watch').length} priority areas`],
+    },
+    sampling: {
+      status: !plan.sampAssigned ? 'Not assigned' : collected === plan.stations.length ? 'Complete' : collected ? 'In progress' : 'Planned',
+      lines: [`${plan.stations.length} stations`, `${collected} collected${plan.sampAssigned ? '' : ' · vessel not assigned'}`],
+    },
+    alerts: {
+      status: high ? `${high} high` : alerts.length ? 'Medium' : 'Clear',
+      lines: [`${alerts.length} active · ${state.acked.length} acknowledged`, alerts[0]?.title ?? 'Nothing pending'],
+    },
+  };
+  return (
+    <nav className="rs-nav" aria-label="Response plan sections">
+      {SECTIONS.map(({ id, label, icon: Icon }) => (
+        <button key={id} type="button" onClick={() => setPage(id)}>
+          <Icon size={16} />
+          <span>
+            <b>{label}<Pill v={rows[id].status} /></b>
+            <small>{rows[id].lines[0]}</small>
+            <small>{rows[id].lines[1]}</small>
+          </span>
+          <ChevronRight size={14} />
+        </button>
+      ))}
+    </nav>
+  );
 }
 
 export function ResponsePane(p: PaneProps) {
   return (
     <>
+      {p.page !== 'overview' && (
+        <button type="button" className="rs-back" onClick={() => p.setPage('overview')}>
+          <ArrowLeft size={15} />Response overview
+        </button>
+      )}
       {p.page === 'overview' && <OverviewPane {...p} />}
       {p.page === 'containment' && <ContainmentPane {...p} />}
       {p.page === 'assets' && <AssetsPane {...p} />}
@@ -207,7 +284,8 @@ const counts = (plan: Plan, t: number, state: PlanState) => {
 };
 const activeAlerts = (plan: Plan, state: PlanState) => plan.alerts.filter((a) => !a.resolvedByDefault && !state.resolved.includes(a.id));
 
-function OverviewPane({ plan, t, state, setPage, firstShore, products, forcing, waveM }: PaneProps) {
+function OverviewPane(p: PaneProps) {
+  const { plan, t, state, setPage, firstShore, forcing, waveM } = p;
   const c = counts(plan, t, state);
   const alerts = activeAlerts(plan, state);
   const shoreKm = plan.zones.reduce((s, z) => s + z.km, 0);
@@ -216,78 +294,113 @@ function OverviewPane({ plan, t, state, setPage, firstShore, products, forcing, 
       <section className="dm-card dm-hero">
         <div>
           <h2>Response overview</h2>
-          <p>Active response. {plan.boomA.recommended ? `Boom A recommended at +${plan.boomA.atH} h` : 'Containment not feasible at the recommended line'}; {firstShore !== undefined ? `oil reaches the coast at +${firstShore} h` : 'no shore contact forecast within 24 h'}. Plan state at {signed(t)}.</p>
+          <p>Active response. {plan.booms.filter((b) => isDeployed(b, state)).length} boom lines deployed; {firstShore !== undefined ? `oil reaches the coast at +${firstShore} h` : 'no shore contact forecast within 24 h'}. Plan state at {signed(t)}.</p>
         </div>
         <Badge status={alerts.some((a) => a.severity === 'High') ? 'warning' : 'clear'}>{alerts.length} alerts</Badge>
       </section>
+      <SectionNav {...p} />
       <section className="dm-tiles">
         <Tile label="Response window" value={f1(plan.windowH)} unit="h" note="to deploy containment" tone={plan.windowH <= 12 ? 'critical' : 'warning'} />
         <Tile label="Assets on scene" value={String(c.scene)} note={`of ${c.total} · ${c.route} en route`} tone="clear" />
-        <Tile label="Boom length" value={f1(plan.boomA.lengthKm)} unit="km" note={plan.boomA.recommended ? 'Boom A, recommended' : 'not feasible'} />
+        <Tile label="Boom in use" value={f1(plan.booms.filter((b) => isDeployed(b, state)).reduce((x, b) => x + b.lengthKm, 0))} unit="km" note={`${plan.booms.filter((b) => isDeployed(b, state)).length} lines`} />
         <Tile label="Shoreline to clean" value={f1(shoreKm)} unit="km" note={`${plan.zones.length} zones`} tone={shoreKm ? 'warning' : undefined} />
       </section>
       <Card icon={Bell} title={`Active alerts (${alerts.length})`} onClick={() => setPage('alerts')}>
         <ul className="rs-list">{alerts.slice(0, 3).map((a) => <li key={a.id}><i className={`rs-dot is-${a.severity.toLowerCase()}`} /><span>{a.title}<small>{a.area}</small></span><small className="num">{signed(a.at)}</small></li>)}</ul>
       </Card>
-      <div className="dm-grid">
-        <Card icon={Shield} title="Containment" onClick={() => setPage('containment')}><dl className="dm-rows"><div><dt>Deployments</dt><dd>1</dd></div><div><dt>Total length</dt><dd className="num">{f1(plan.boomA.lengthKm)} km</dd></div><div><dt>Status</dt><dd>{t >= plan.boomA.readyH ? <Pill v="Deployed" /> : <Pill v="In progress" />}</dd></div></dl></Card>
-        <Card icon={Ship} title="Assets" onClick={() => setPage('assets')}><dl className="dm-rows"><div><dt>Total</dt><dd>{c.total}</dd></div><div><dt>On scene · en route</dt><dd>{c.scene} · {c.route}</dd></div><div><dt>Standby · down</dt><dd>{c.standby} · {c.down}</dd></div></dl></Card>
-        <Card icon={Plane} title="Surveillance" onClick={() => setPage('surveillance')}><dl className="dm-rows"><div><dt>Active missions</dt><dd>{plan.missions.filter((m) => t >= m.start && t <= m.end).length}</dd></div><div><dt>Planned</dt><dd>{plan.missions.filter((m) => t < m.start).length}</dd></div><div><dt>Next flight</dt><dd className="num">{plan.missions.find((m) => m.start > t)?.id ?? '—'}</dd></div></dl></Card>
-        <Card icon={Waves} title="Cleanup" onClick={() => setPage('cleanup')}><dl className="dm-rows"><div><dt>Priority areas</dt><dd>{plan.zones.filter((z) => z.priority !== 'Watch').length}</dd></div><div><dt>Shoreline</dt><dd className="num">{f1(shoreKm)} km</dd></div><div><dt>Status</dt><dd><Pill v={plan.zones.length ? 'Planning' : 'Watch'} /></dd></div></dl></Card>
-        <Card icon={FlaskConical} title="Sampling" onClick={() => setPage('sampling')}><dl className="dm-rows"><div><dt>Stations</dt><dd>{plan.stations.length}</dd></div><div><dt>Collected</dt><dd>{plan.stations.filter((s) => t >= s.arrive).length}</dd></div><div><dt>Status</dt><dd><Pill v={plan.stations.some((s) => t >= s.arrive) ? 'In progress' : 'Planned'} /></dd></div></dl></Card>
-        <Card icon={Wind} title="Conditions"><dl className="dm-rows"><div><dt>Wind</dt><dd className="num">{f1(forcing.windSpeed * 1.944)} kt</dd></div><div><dt>Sea state</dt><dd className="num">{f1(waveM)} m</dd></div><div><dt>Boom limits</dt><dd>{plan.feasible.hsOk && plan.feasible.windOk ? <Pill v="Within" /> : <Pill v="Exceeded" />}</dd></div></dl></Card>
-      </div>
-      <QuickActions products={products} />
     </>
   );
 }
 
-function QuickActions({ products }: { products: ProductContext }) {
-  const [busy, setBusy] = useState<string>();
-  const [failed, setFailed] = useState<string>();
-  const run = async (kind: 'iap' | 'sitrep' | 'report') => {
-    setBusy(kind); setFailed(undefined);
-    try {
-      const g = await import('../../../products/generate');
-      await (kind === 'iap' ? g.openIap : kind === 'sitrep' ? g.openSitrep : g.openReport)(products);
-    } catch (e) { setFailed(e instanceof Error ? e.message : String(e)); } finally { setBusy(undefined); }
-  };
+/** One expandable row: the summary is the button, the detail opens directly under it. */
+function Row({ id, open, onToggle, dot, title, sub, pill, aside, children }: {
+  id: string; open: boolean; onToggle: (id: string) => void; dot: string; title: string; sub: string; pill: string; aside?: string; children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLLIElement>(null);
+  // Opened from the map: bring the row into view so the change is seen.
+  useEffect(() => { if (open) ref.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, [open]);
   return (
-    <section className="rs-actions">
-      <h3><Zap size={14} />Quick actions</h3>
-      <div>
-        <button type="button" className="is-primary" disabled={!!busy} onClick={() => run('iap')}><FileText size={14} />{busy === 'iap' ? 'Generating…' : 'Generate IAP'}</button>
-        <button type="button" disabled={!!busy} onClick={() => run('sitrep')}><ClipboardList size={14} />{busy === 'sitrep' ? 'Generating…' : 'Create SITREP'}</button>
-        <button type="button" disabled={!!busy} onClick={() => run('report')}><BarChart3 size={14} />{busy === 'report' ? 'Generating…' : 'Technical report'}</button>
-      </div>
-      <small className="fc-note">PDFs from the GUARDIANS IAP, SITREP and technical-report generators, set to this slick. Demonstration content is marked in each document.</small>
-      {failed && <small className="fc-note rs-fail">Could not generate: {failed}</small>}
-    </section>
+    <li ref={ref} className={`rs-acc${open ? ' is-open' : ''}`}>
+      <button type="button" className="rs-acc-head" aria-expanded={open} onClick={() => onToggle(id)}>
+        <i className="rs-dot" style={{ background: dot }} />
+        <span><b>{title}</b><small>{sub}</small></span>
+        <Pill v={pill} />
+        {aside && <small className="num rs-acc-aside">{aside}</small>}
+        <ChevronDown size={15} className="rs-acc-chev" />
+      </button>
+      {open && <div className="rs-acc-body">{children}</div>}
+    </li>
   );
 }
 
-function ContainmentPane({ plan, forcing, waveM, firstShore }: PaneProps) {
-  const A = plan.boomA, B = plan.boomB;
+function ContainmentPane({ plan, t, state, setState, forcing, waveM, firstShore, picked, setPicked }: PaneProps) {
+  const deployed = plan.booms.filter((b) => isDeployed(b, state));
+  const total = deployed.reduce((s, b) => s + b.lengthKm, 0);
+  const openId = picked?.startsWith('boom:') ? picked.slice(5) : undefined;
+  const toggle = (id: string) => setPicked(openId === id ? undefined : `boom:${id}`);
+  const set = (id: string, on: boolean) => setState((s) => {
+    const crew = plan.booms.find((b) => b.id === id)?.crewIds ?? [];
+    const assigned = { ...s.assigned };
+    // Deploying a line puts its crew to work; standing it down releases them.
+    for (const c of crew) { if (on) assigned[c] ??= Date.now(); else delete assigned[c]; }
+    return { ...s, assigned, booms: { ...s.booms, [id]: on } };
+  });
+  const curKt = Math.hypot(forcing.driftU, forcing.driftV) * 1.944;
+  const group = (kind: 'offshore' | 'shoreline') => plan.booms.filter((b) => b.kind === kind);
+  const status = (b: Plan['booms'][number]) => !isDeployed(b, state) ? (b.recommended ? 'Recommended' : 'Candidate') : t >= b.readyH ? 'Deployed' : 'Deploying';
+  const list = (kind: 'offshore' | 'shoreline') => (
+    <ul className="rs-accs">
+      {group(kind).map((b) => (
+        <Row key={b.id} id={b.id} open={openId === b.id} onToggle={toggle}
+          dot={isDeployed(b, state) ? '#35c46a' : b.recommended ? '#e0a21b' : '#9aa7b3'}
+          title={b.name} sub={b.protects ?? `${f1(b.lengthKm)} km · ${b.type}`}
+          pill={status(b)} aside={b.atH !== null ? `oil +${b.atH} h` : 'no oil 24 h'}>
+          <dl className="dm-rows rs-2col">
+            <div><dt>Length</dt><dd className="num">{f1(b.lengthKm)} km</dd></div>
+            <div><dt>Type</dt><dd>{b.type}</dd></div>
+            <div><dt>Oil reaches line</dt><dd className="num">{b.atH !== null ? `+${b.atH} h` : 'not within 24 h'}</dd></div>
+            <div><dt>Ready by</dt><dd className="num">{signed(b.readyH)}</dd></div>
+            <div><dt>Slack</dt><dd className="num">{b.atH !== null ? `${f1(b.atH - b.readyH)} h` : '—'}</dd></div>
+            <div><dt>Crew</dt><dd>{b.vessel ?? '—'}</dd></div>
+          </dl>
+          <p className="fc-note">{b.reason}</p>
+          <div className="rs-btns">
+            {isDeployed(b, state)
+              ? <button type="button" onClick={() => set(b.id, false)}>Stand down</button>
+              : <button type="button" className="is-primary" onClick={() => set(b.id, true)}><Send size={14} />Deploy</button>}
+          </div>
+        </Row>
+      ))}
+    </ul>
+  );
   return (
     <>
-      <section className={`dm-card dm-hero ${A.recommended ? '' : 'fc-risk is-high'}`}>
-        <div><h2>Containment plan</h2><p>Plan and deploy interception resources to contain the slick before it spreads further.</p></div>
-        <Badge status={A.recommended ? 'clear' : 'warning'}>{A.recommended ? 'Boom A recommended' : 'Not feasible'}</Badge>
+      <section className="dm-card dm-hero">
+        <div><h2>Containment</h2><p>Every boom line in the plan. Open one for its timing and crew; Deploy or Stand down changes the plan, the map and the timeline. Choices are kept in this browser.</p></div>
+        <Badge status={deployed.length ? 'clear' : 'warning'}>{deployed.length} deployed</Badge>
       </section>
-      <Card icon={CheckCircle2} title="Recommended interception zone" meta={<Pill v={A.recommended ? 'Recommended' : 'Blocked'} />}>
-        <dl className="dm-rows rs-3">
-          <div><dt>Position (centre)</dt><dd className="num">{A.centre[1].toFixed(2)}° N, {A.centre[0].toFixed(2)}° E</dd></div>
-          <div><dt>Estimated length</dt><dd className="num">{f1(A.lengthKm)} km</dd></div>
-          <div><dt>Oil arrives</dt><dd className="num">+{A.atH} h</dd></div>
+      <section className="dm-tiles">
+        <Tile label="Deployments" value={String(deployed.length)} note={`of ${plan.booms.length} candidate lines`} tone={deployed.length ? 'clear' : 'warning'} />
+        <Tile label="Boom in use" value={f1(total)} unit="km" note="total length" />
+        <Tile label="First oil at a line" value={deployed.some((b) => b.atH !== null) ? `+${Math.min(...deployed.filter((b) => b.atH !== null).map((b) => b.atH!))}` : '—'} unit={deployed.some((b) => b.atH !== null) ? 'h' : undefined} />
+        <Tile label="Boom limits" value={plan.feasible.hsOk && plan.feasible.windOk ? 'OK' : 'Over'} note={`Hs ${f1(waveM)} m · ${plan.feasible.windKt.toFixed(0)} kt`} tone={plan.feasible.hsOk && plan.feasible.windOk ? 'clear' : 'critical'} />
+      </section>
+      <section className="dm-card">
+        <header className="dm-head"><h3><Shield size={15} />Offshore interception</h3><span className="dm-meta">{group('offshore').filter((b) => isDeployed(b, state)).length} of {group('offshore').length} deployed</span></header>
+        {list('offshore')}
+      </section>
+      <section className="dm-card">
+        <header className="dm-head"><h3><Waves size={15} />Shoreline protection</h3><span className="dm-meta">{group('shoreline').length ? `${group('shoreline').filter((b) => isDeployed(b, state)).length} of ${group('shoreline').length} deployed` : 'none needed'}</span></header>
+        {group('shoreline').length ? list('shoreline') : <p className="fc-note">No coast within reach of the forecast; no shoreline booms are planned.</p>}
+      </section>
+      <Card icon={ShieldCheck} title="Conditions for booming">
+        <dl className="dm-rows rs-2col">
+          <div><dt>Sea state (Hs)</dt><dd className="num">{f1(waveM)} m {plan.feasible.hsOk ? <Pill v="OK" /> : <Pill v="Too high" />}</dd></div>
+          <div><dt>Wind</dt><dd className="num">{plan.feasible.windKt.toFixed(0)} kt {plan.feasible.windOk ? <Pill v="OK" /> : <Pill v="Too high" />}</dd></div>
+          <div><dt>Current</dt><dd className="num">{f1(curKt)} kt</dd></div>
+          <div><dt>Entrainment</dt><dd>{curKt > 0.7 ? 'Above 0.7 kt: angle the boom' : 'Low'}</dd></div>
         </dl>
       </Card>
-      <div className="dm-grid">
-        <Card icon={Link2} title="Boom deployment"><dl className="dm-rows"><div><dt>Total length</dt><dd className="num">{f1(A.lengthKm)} km</dd></div><div><dt>Type</dt><dd>Offshore, inflatable</dd></div><div><dt>Vessels</dt><dd>{A.vessel}</dd></div><div><dt>Configuration</dt><dd>U-boom, skimmer at apex</dd></div></dl></Card>
-        <Card icon={Clock} title="Interception window"><dl className="dm-rows"><div><dt>Earliest deployment</dt><dd className="num">{signed(A.readyH)}</dd></div><div><dt>Oil at line</dt><dd className="num">+{A.atH} h</dd></div><div><dt>Slack</dt><dd className="num">{f1(A.atH - A.readyH)} h</dd></div><div><dt>Effectiveness</dt><dd><Pill v={A.recommended ? 'High' : 'Low'} /></dd></div></dl></Card>
-        <Card icon={ShieldCheck} title="Feasibility & safety"><dl className="dm-rows"><div><dt>Sea state (Hs)</dt><dd className="num">{f1(waveM)} m {plan.feasible.hsOk ? <Pill v="OK" /> : <Pill v="Too high" />}</dd></div><div><dt>Wind</dt><dd className="num">{plan.feasible.windKt.toFixed(0)} kt {plan.feasible.windOk ? <Pill v="OK" /> : <Pill v="Too high" />}</dd></div><div><dt>Current</dt><dd className="num">{f1(Math.hypot(forcing.driftU, forcing.driftV) * 1.944)} kt</dd></div><div><dt>Entrainment risk</dt><dd>{Math.hypot(forcing.driftU, forcing.driftV) * 1.944 > 0.7 ? 'Current above 0.7 kt: angle the boom' : 'Low'}</dd></div></dl></Card>
-        <Card icon={ClipboardList} title="Candidate comparison"><dl className="dm-rows"><div><dt>Boom A</dt><dd>{f1(A.lengthKm)} km · +{A.atH} h · {A.recommended ? '✓' : '✕'}</dd></div><div><dt>Boom B</dt><dd>{f1(B.lengthKm)} km · +{B.atH} h · ✕</dd></div><div><dt>Why not B</dt><dd><small>{B.reason}</small></dd></div></dl></Card>
-      </div>
-      <Card icon={FileText} title="Rationale"><p className="fc-note">{A.reason} {A.recommended ? 'Intercepting here keeps the thick leading edge offshore, with vessels available and the sea state inside boom limits.' : ''}</p></Card>
       {firstShore !== undefined && <section className="dm-card rs-banner"><AlertTriangle size={16} /><span><b>Slick approaching the coast</b><small>First shore contact forecast at +{firstShore} h.</small></span></section>}
     </>
   );
@@ -295,38 +408,54 @@ function ContainmentPane({ plan, forcing, waveM, firstShore }: PaneProps) {
 
 function AssetsPane({ plan, t, t0, state, setState, picked, setPicked }: PaneProps) {
   const c = counts(plan, t, state);
-  const sel: Asset = plan.assets.find((a) => a.id === picked) ?? plan.assets[0];
-  const st = assetStatus(sel, t, state.assigned[sel.id] !== undefined);
   const rec = plan.recommend;
+  const openId = picked && !picked.startsWith('boom:') ? picked : undefined;
+  const assign = (id: string, on: boolean) => setState((x) => {
+    const n = { ...x.assigned };
+    if (on) n[id] = Date.now(); else delete n[id];
+    return { ...x, assigned: n };
+  });
   return (
     <>
-      <section className="dm-card dm-hero"><div><h2>Response assets</h2><p>Vessels and equipment for on-water response and pre-positioning. Select an asset on the map or in the list.</p></div><Badge claim="predicted">Plan</Badge></section>
+      <section className="dm-card dm-hero"><div><h2>Response assets</h2><p>Every vessel in the plan. Open a row, or click a ship on the map, for its details; assign standby vessels from their row.</p></div><Badge claim="predicted">Plan</Badge></section>
       <section className="dm-tiles">
-        <Tile label="Total assets" value={String(c.total)} /><Tile label="On scene" value={String(c.scene)} tone="clear" /><Tile label="En route" value={String(c.route)} /><Tile label="Standby" value={String(c.standby)} /><Tile label="Unavailable" value={String(c.down)} tone={c.down ? 'critical' : undefined} />
+        <Tile label="On scene" value={String(c.scene)} tone="clear" note={`of ${c.total}`} /><Tile label="En route" value={String(c.route)} /><Tile label="Standby" value={String(c.standby)} /><Tile label="Unavailable" value={String(c.down)} tone={c.down ? 'critical' : undefined} />
       </section>
-      <Card icon={Ship} title={sel.name} meta={<Pill v={cap(st)} />}>
-        <dl className="dm-rows rs-2col">
-          <div><dt>Type</dt><dd>{cap(sel.kind)}</dd></div><div><dt>Task</dt><dd>{sel.task}</dd></div>
-          <div><dt>Position</dt><dd className="num">{assetAt(sel, t)[1].toFixed(2)}° N, {assetAt(sel, t)[0].toFixed(2)}° E</dd></div><div><dt>Speed</dt><dd className="num">{sel.knots} kn</dd></div>
-          <div><dt>Distance to task</dt><dd className="num">{f1(sel.distKm)} km</dd></div><div><dt>Crew</dt><dd>{sel.crew}</dd></div>
-          <div><dt>ETA</dt><dd className="num">{sel.arrive > 0 && sel.arrive < 99 ? clockAt(t0, sel.arrive) : st === 'on scene' ? 'On station' : '—'}</dd></div>{sel.note && <div><dt>Note</dt><dd>{sel.note}</dd></div>}
-        </dl>
-      </Card>
       {rec && (
         <section className="dm-card rs-rec">
-          <header className="dm-head"><h3><Target size={15} />Pre-positioning recommendation</h3><Pill v="High priority" /></header>
-          <p>Position <b>{rec.a.name}</b> from {rec.staging} to <i>{rec.a.task.toLowerCase()}</i>.</p>
-          <div className="rs-rec-row"><span><small>ETA</small><b className="num">{f1(rec.eta)} h</b></span><span><small>Distance</small><b className="num">{f1(rec.km)} km</b></span>
-            <button type="button" onClick={() => { setState((s) => ({ ...s, assigned: { ...s.assigned, [rec.a.id]: Date.now() } })); setPicked(rec.a.id); }}><Send size={14} />Assign</button></div>
+          <header className="dm-head"><h3><Target size={15} />Recommended next</h3><Pill v="High priority" /></header>
+          <p>Assign <b>{rec.a.name}</b> from {rec.staging} to <i>{rec.a.task.toLowerCase()}</i>: {f1(rec.km)} km, about {f1(rec.eta)} h.</p>
+          <div className="rs-btns"><button type="button" className="is-primary" onClick={() => { assign(rec.a.id, true); setPicked(rec.a.id); }}><Send size={14} />Assign</button></div>
         </section>
       )}
-      <Card icon={Clock} title="Readiness and ETA">
-        <ul className="rs-list">{plan.assets.map((a) => { const s = assetStatus(a, t, state.assigned[a.id] !== undefined); return (
-          <li key={a.id} aria-selected={a.id === sel.id} onClick={() => setPicked(a.id)} className="fc-link"><i className="rs-dot" style={{ background: COLOUR[s] }} /><span>{a.name}<small>{a.task}</small></span><Pill v={cap(s)} /><small className="num">{s === 'en route' ? `${f1(a.arrive - t)} h` : s === 'standby' ? `${f1(a.distKm / (a.knots * 1.852))} h` : '—'}</small>
-            {s === 'standby' && <button type="button" className="rs-mini" onClick={(e) => { e.stopPropagation(); setState((x) => ({ ...x, assigned: { ...x.assigned, [a.id]: Date.now() } })); }}>Assign</button>}
-            {state.assigned[a.id] !== undefined && <button type="button" className="rs-mini is-quiet" onClick={(e) => { e.stopPropagation(); setState((x) => { const n = { ...x.assigned }; delete n[a.id]; return { ...x, assigned: n }; }); }}>Undo</button>}
-          </li>); })}</ul>
-      </Card>
+      <section className="dm-card">
+        <header className="dm-head"><h3><Ship size={15} />Fleet</h3><span className="dm-meta">{c.total} vessels</span></header>
+        <ul className="rs-accs">
+          {plan.assets.map((a) => {
+            const assigned = state.assigned[a.id] !== undefined;
+            const s = assetStatus(a, t, assigned);
+            const pos = assetAt(a, t);
+            return (
+              <Row key={a.id} id={a.id} open={openId === a.id} onToggle={(id) => setPicked(openId === id ? undefined : id)}
+                dot={COLOUR[s]} title={a.name} sub={a.task} pill={cap(s)}
+                aside={s === 'en route' ? `ETA ${f1(a.arrive - t)} h` : s === 'standby' ? `${f1(a.distKm / (a.knots * 1.852))} h away` : undefined}>
+                <dl className="dm-rows rs-2col">
+                  <div><dt>Type</dt><dd>{cap(a.kind)}</dd></div>
+                  <div><dt>Speed · crew</dt><dd className="num">{a.knots} kn · {a.crew}</dd></div>
+                  <div><dt>Position</dt><dd className="num">{pos[1].toFixed(2)}° N, {pos[0].toFixed(2)}° E</dd></div>
+                  <div><dt>Distance to task</dt><dd className="num">{f1(a.distKm)} km</dd></div>
+                  <div><dt>ETA</dt><dd className="num">{a.arrive > 0 && a.arrive < 99 ? clockAt(t0, a.arrive) : s === 'on scene' ? 'On station' : '—'}</dd></div>
+                  {a.note && <div><dt>Note</dt><dd>{a.note}</dd></div>}
+                </dl>
+                <div className="rs-btns">
+                  {s === 'standby' && <button type="button" className="is-primary" onClick={() => assign(a.id, true)}><Send size={14} />Assign</button>}
+                  {assigned && <button type="button" onClick={() => assign(a.id, false)}>Unassign</button>}
+                </div>
+              </Row>
+            );
+          })}
+        </ul>
+      </section>
       <Card icon={AlertTriangle} title="Conflicts and constraints" tone="warn">
         <ul className="rs-list">{plan.assets.filter((a) => a.status0 === 'unavailable').map((a) => <li key={a.id}><i className="rs-dot is-high" /><span>{a.name} unavailable<small>{a.note}</small></span></li>)}
           {plan.assets.filter((a) => a.arrive > 0 && a.arrive < 99 && (a.id === 'boom-1' || a.id === 'tug-1') && a.arrive > plan.boomA.atH).map((a) => <li key={a.id}><i className="rs-dot is-high" /><span>{a.name} late for Boom A<small>arrives {signed(a.arrive)}, oil at +{plan.boomA.atH} h</small></span></li>)}</ul>
@@ -364,7 +493,7 @@ function SurveillancePane({ plan, t, t0, firstShore }: PaneProps) {
   );
 }
 
-function CleanupPane({ plan, firstShore, products, t0 }: PaneProps) {
+function CleanupPane({ plan, firstShore, t0 }: PaneProps) {
   const total = plan.zones.reduce((s, z) => s + z.km, 0);
   const high = plan.zones.filter((z) => z.priority === 'Immediate' || z.priority === 'High').reduce((s, z) => s + z.km, 0);
   const watch = plan.zones.every((z) => z.priority === 'Watch');
@@ -382,7 +511,6 @@ function CleanupPane({ plan, firstShore, products, t0 }: PaneProps) {
         <Card icon={Clock} title="Urgency" meta={<Pill v={firstShore !== undefined && firstShore <= 12 ? 'High' : firstShore !== undefined ? 'Medium' : 'Low'} />}><p className="fc-note">{firstShore !== undefined ? `Teams on the first zone before +${Math.max(1, firstShore - 2)} h. Optimal cleanup window 0–72 h after contact.` : 'No immediate action; pre-stage kits at the nearest staging point.'}</p></Card>
         <Card icon={FileText} title="Planning status"><dl className="dm-rows"><div><dt>Cleanup plan</dt><dd><Pill v={watch ? 'Standby' : 'In progress'} /></dd></div><div><dt>Teams mobilised</dt><dd>{watch ? 'No' : 'Yes'}</dd></div><div><dt>Estimated start</dt><dd className="num">{firstShore !== undefined ? clockAt(t0, Math.max(0, firstShore - 2)) : '—'}</dd></div></dl></Card>
       </div>
-      <QuickActions products={products} />
     </>
   );
 }

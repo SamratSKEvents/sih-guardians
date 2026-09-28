@@ -20,7 +20,7 @@
 .fc-key.k-source { height: 9px; border: 1.5px solid #ffb547; border-radius: 2px; background: repeating-linear-gradient(45deg, rgb(255 181 71 / 0.5) 0 2px, transparent 2px 4px); }
 .fc-key.k-wind { border-color: #f59e0b; }
 .fc-key.k-current { border-color: #1597cf; }
-.fc-key.k-coast { height: 3px; border: 0; background: linear-gradient(90deg, #e3464d, #ff7a3d, #f5c542); }
+.fc-key.k-coast { height: 3px; border: 0; background: linear-gradient(90deg, var(--critical), #ff7a3d, #f5c542); }
 .fc-key.k-borders { border-color: #a8efc5; }
 .fc-key.k-protected { height: 9px; border: 1.5px solid var(--series-1); border-radius: 50%; background: rgb(75 212 82 / 0.2); }
 .fc-key.k-towns { width: 8px; height: 8px; margin-left: 4px; border: 1.5px solid #0b0f14; border-radius: 50%; background: #fff; }
@@ -134,7 +134,7 @@
 
 .fc-chart { width: 100%; height: auto; }
 .fc-chart .grid { stroke: var(--line-soft); }
-.fc-chart .axis { fill: var(--ink-muted); font-size: 9px; }
+.fc-chart .axis { fill: var(--ink-muted); font-size: var(--text-3xs); }
 .fc-chart .fill { fill: rgb(70 140 220 / 0.18); }
 .fc-chart .stroke { fill: none; stroke: #2f6fc4; stroke-width: 2; }
 .fc-chart .fill.is-back { fill: rgb(255 181 71 / 0.2); }
@@ -143,7 +143,7 @@
 .b-afloat { fill: #3d7fd0; background: #3d7fd0; }
 .b-evap { fill: #b9c4d0; background: #b9c4d0; }
 .b-disp { fill: #57c9c9; background: #57c9c9; }
-.b-strand { fill: #e3464d; background: #e3464d; }
+.b-strand { fill: var(--critical); background: var(--critical); }
 .fc-bkey { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px var(--space-5); margin: var(--space-3) 0 0; padding: 0; list-style: none; font-size: var(--text-2xs); }
 .fc-bkey li { display: flex; align-items: center; gap: var(--space-3); }
 .fc-bkey i { width: 9px; height: 9px; border-radius: 2px; }
@@ -164,7 +164,7 @@
 .fc-vec svg { width: 100%; }
 .fc-vec .ring { fill: none; stroke: var(--line-soft); }
 .fc-vec .axis { stroke: var(--line-soft); }
-.fc-vec .lbl { fill: var(--ink-muted); font-size: 8px; }
+.fc-vec .lbl { fill: var(--ink-muted); font-size: var(--text-3xs); }
 .fc-vec g line { stroke-width: 2.5; stroke-linecap: round; }
 .fc-vec .wind line, .fc-vec .wind circle { stroke: #f59e0b; fill: #f59e0b; }
 .fc-vec .current line, .fc-vec .current circle { stroke: #1597cf; fill: #1597cf; }
@@ -183,7 +183,7 @@
 .fc-arr-row > span small { color: var(--ink-muted); }
 .fc-arr-row > div { position: relative; height: 18px; border-radius: 3px; background: repeating-linear-gradient(90deg, var(--panel-sunken) 0 calc(25% - 1px), var(--line-soft) calc(25% - 1px) 25%); }
 .fc-arr-row i { position: absolute; top: 2px; bottom: 2px; min-width: 4px; border-radius: 3px; }
-.fc-arr-row i.is-high { background: #e3464d; }
+.fc-arr-row i.is-high { background: var(--critical); }
 .fc-arr-row i.is-med { background: #ff9a3d; }
 .fc-arr-row i b { position: absolute; left: calc(100% + 4px); top: 50%; color: var(--ink); font-size: var(--text-3xs); transform: translateY(-50%); white-space: nowrap; }
 .fc-arr-row em { position: absolute; left: var(--space-3); top: 50%; color: var(--ink-muted); font-style: normal; transform: translateY(-50%); }
@@ -206,7 +206,7 @@
 
 /* top-5 attribution list */
 .fc-prob { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
-.fc-prob li { display: grid; grid-template-columns: 1.2rem minmax(0, 1.4fr) minmax(0, 1fr) 3rem minmax(0, 1fr); align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-2); border-bottom: 1px solid var(--line-soft); font-size: var(--text-xs); cursor: pointer; }
+.fc-prob li { display: grid; grid-template-columns: 1.2rem minmax(0, 1.5fr) minmax(4rem, 1fr) 2.8rem 7.5rem; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-2); border-bottom: 1px solid var(--line-soft); font-size: var(--text-xs); cursor: pointer; }
 .fc-prob li:last-child { border-bottom: 0; }
 .fc-prob li[aria-selected='true'] { background: var(--accent-wash); }
 .fc-prob li > small { color: var(--ink-muted); text-align: right; }
@@ -226,3 +226,28 @@
 .fc-maptag.is-step b { box-shadow: inset 2px 0 0 #6fa8ea; }
 .fc-maptag.is-source b { box-shadow: inset 2px 0 0 #ffb547; }
 .fc-maptag.is-slick b { box-shadow: inset 2px 0 0 #ff8a3c; }
+
+/* Overview impact: one slim row, coloured by risk, leading to Shoreline impact. */
+.fc-impact { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-5); width: 100%; padding: var(--space-4) var(--space-5); border-radius: var(--radius-panel); background: var(--panel-sunken); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.fc-impact:hover { filter: brightness(0.98); }
+.fc-impact > i { width: 10px; height: 10px; border-radius: 50%; background: var(--ink-faint); }
+.fc-impact span { display: flex; flex-direction: column; gap: 2px; }
+.fc-impact b { font-size: var(--text-sm); font-weight: 700; }
+.fc-impact small { color: var(--ink-secondary); font-size: var(--text-xs); line-height: 1.4; }
+.fc-impact > svg { color: var(--ink-muted); }
+.fc-impact.is-high { background: var(--critical-wash); }
+.fc-impact.is-high > i { background: var(--critical); }
+.fc-impact.is-high b { color: var(--critical-ink); }
+.fc-impact.is-medium { background: var(--warning-wash); }
+.fc-impact.is-medium > i { background: var(--warning); }
+.fc-impact.is-medium b { color: var(--warning-ink); }
+.fc-impact.is-low { background: var(--clear-wash); }
+.fc-impact.is-low > i { background: var(--clear); }
+.fc-impact.is-low b { color: var(--clear-ink); }
+
+.fc-prob-name { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.fc-prob-name b { display: flex; align-items: center; gap: var(--space-3); overflow: hidden; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.fc-prob-name b .dm-dot { flex: none; }
+.fc-prob-name small { overflow: hidden; padding-left: calc(8px + var(--space-3)); color: var(--ink-muted); font-size: var(--text-3xs); text-overflow: ellipsis; white-space: nowrap; }
+.fc-prob li > b.num:last-of-type { text-align: right; }
+.fc-prob li > small { white-space: nowrap; }

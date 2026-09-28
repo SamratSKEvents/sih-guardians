@@ -274,10 +274,12 @@
 
 .tl-mini-fill {
   display: block;
+  width: 100%;
   height: 100%;
   border-radius: 0 99px 99px 0;
   background: var(--accent-bright);
-  transition: width var(--dur-base) var(--ease-out);
+  transform-origin: left;
+  transition: transform var(--dur-base) var(--ease-out);
 }
 
 .tl-collapsed .tl-toggle {

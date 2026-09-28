@@ -1,0 +1,160 @@
+/* Landing section three: "What's the Problem?". Same ground as section two. */
+
+.p3 {
+  --ink: #eef4f8;
+  --cyan: #3cc8e8;
+  --red: #ff5a4a;
+  position: relative;
+  isolation: isolate;
+  padding: 7vh 4.5vw 10vh;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: clamp(9px, 0.95vw, 16px);
+  background: #050a10 center / cover no-repeat;
+}
+.p3::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgb(4 9 16 / 0.96) 0%, rgb(4 9 16 / 0.72) 30%, rgb(4 9 16 / 0.72) 75%, rgb(4 9 16 / 0.92) 100%);
+}
+
+/* ── Heading ─────────────────────────────────────────── */
+.p3-head { display: flex; align-items: center; gap: 1.4em; max-width: 1600px; margin: 0 auto 3.5em; }
+.p3-head h2 {
+  margin: 0;
+  font-size: 3em;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.p3-head h2 span { color: var(--cyan); }
+
+/* ── Panels ──────────────────────────────────────────── */
+.p3-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3.5em;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+.p3-panel {
+  --tilt: perspective(1600px) rotateY(7deg) rotateZ(-1.5deg);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 1.4em;
+  border: 1.5px solid rgb(94 224 255 / 0.6);
+  background: linear-gradient(160deg, rgb(14 44 60 / 0.85), rgb(6 22 34 / 0.9));
+  box-shadow: 0 0 28px rgb(60 200 232 / 0.25), inset 0 0 22px rgb(60 200 232 / 0.08);
+  transform: var(--tilt);
+}
+.p3-panel + .p3-panel { --tilt: perspective(1600px) rotateY(-7deg) rotateZ(1.5deg); }
+
+.p3-panel-head { display: flex; gap: 1.3em; align-items: center; padding: 1.8em 2em 1.4em; }
+.p3-ring {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 4.4em;
+  height: 4.4em;
+  border-radius: 50%;
+  border: 2px solid var(--cyan);
+  color: var(--cyan);
+  box-shadow: 0 0 16px rgb(60 200 232 / 0.4), inset 0 0 10px rgb(60 200 232 / 0.2);
+}
+.p3-ring svg { width: 2.3em; height: 2.3em; }
+.p3-panel h3 {
+  margin: 0 0 0.35em;
+  font-size: 2em;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.p3-panel p { margin: 0; font-size: 1.05em; line-height: 1.45; color: rgb(238 244 248 / 0.85); }
+
+/* Image bleeds to the panel edges and fades up into the header. */
+.p3-media { position: relative; flex: 1; aspect-ratio: 3 / 2; overflow: hidden; }
+.p3-media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 16%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 16%);
+  animation: p3-drift 24s ease-in-out infinite alternate;
+}
+@keyframes p3-drift { from { transform: scale(1); } to { transform: scale(1.05) translate(-1%, -1%); } }
+
+/* ── Callouts ────────────────────────────────────────── */
+.p3-leaders { position: absolute; inset: 0; width: 100%; height: 100%; }
+.p3-leaders line {
+  stroke: rgb(238 244 248 / 0.85);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.p3-red .p3-leaders line { stroke: rgb(255 120 100 / 0.9); }
+
+.p3-pin {
+  position: absolute;
+  width: 0.7em;
+  height: 0.7em;
+  margin: -0.35em 0 0 -0.35em;
+  border-radius: 50%;
+  background: #e8fbff;
+  box-shadow: 0 0 0 3px rgb(60 200 232 / 0.35), 0 0 12px var(--cyan);
+}
+.p3-red .p3-pin { background: #ffd2cc; box-shadow: 0 0 0 3px rgb(255 90 74 / 0.35), 0 0 12px var(--red); }
+
+.p3-chip {
+  position: absolute;
+  translate: -50% -50%;
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  padding: 0.7em 1.1em;
+  border-radius: 0.7em;
+  border: 1px solid rgb(94 224 255 / 0.45);
+  background: rgb(5 18 28 / 0.82);
+  backdrop-filter: blur(6px);
+  font-size: 1em;
+  font-weight: 500;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+.p3-chip svg { width: 2em; height: 2em; flex: none; color: var(--cyan); }
+.p3-red .p3-chip { border-color: rgb(255 120 100 / 0.45); }
+.p3-red .p3-chip svg { color: var(--red); }
+
+/* ── Scroll reveal ───────────────────────────────────── */
+.p3-head { opacity: 0; translate: 0 24px; transition: opacity 0.9s ease, translate 0.9s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.p3-panel { opacity: 0; translate: 0 32px; transition: opacity 1s ease, translate 1s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.p3-chip, .p3-pin { opacity: 0; transition: opacity 0.8s ease; }
+.p3-chip { scale: 0.96; transition: opacity 0.8s ease, scale 0.8s ease; }
+.p3-leaders line { transition: stroke-dashoffset 1.1s ease; }
+
+.p3.is-in .p3-head { opacity: 1; translate: 0 0; }
+.p3.is-in .p3-panel { opacity: 1; translate: 0 0; transition-delay: calc(0.25s + var(--p) * 0.25s); }
+.p3.is-in .p3-leaders line { stroke-dashoffset: 0; transition-delay: calc(1.1s + var(--i) * 0.25s); }
+.p3.is-in .p3-pin { opacity: 1; transition-delay: calc(1.1s + var(--i) * 0.25s); }
+.p3.is-in .p3-chip { opacity: 1; scale: 1; transition-delay: calc(1.4s + var(--i) * 0.25s); }
+.p3.is-in .p3-pin { animation: p3-pulse 4s ease-in-out calc(2.5s + var(--i) * 0.5s) infinite; }
+@keyframes p3-pulse { 50% { scale: 1.35; } }
+
+/* ── Narrow: stacked, flat ───────────────────────────── */
+@media (max-width: 900px) {
+  .p3 { font-size: 11px; }
+  .p3-panels { grid-template-columns: 1fr; }
+  .p3-panel, .p3-panel + .p3-panel { --tilt: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p3 *, .p3-head, .p3-panel { transition: none !important; animation: none !important; }
+  .p3-head, .p3-panel, .p3-chip, .p3-pin { opacity: 1; translate: none; scale: 1; }
+  .p3-chip { translate: -50% -50%; }
+  .p3-leaders line { stroke-dashoffset: 0; }
+}

@@ -231,3 +231,6 @@ body,
   color: var(--ink-muted);
   font-size: var(--text-xs);
 }
+
+/* Shown while a surface's chunk downloads (first visit only). */
+.app-loading { display: grid; place-items: center; height: 100%; color: var(--ink-muted, #888); font-size: 14px; letter-spacing: 0.04em; }

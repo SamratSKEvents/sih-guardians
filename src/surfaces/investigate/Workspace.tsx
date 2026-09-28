@@ -18,13 +18,15 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { Bell, ChevronDown, Database, Download, FlaskConical, House, LayoutGrid, Map as MapIcon, Pentagon, Plane, Satellite, Shield, Ship, Waves } from 'lucide-react';
+import { Bell, ChevronDown, Play, Database, Download, FlaskConical, House, LayoutGrid, Map as MapIcon, Pentagon, Plane, Satellite, Shield, Ship, Waves } from 'lucide-react';
 import { SceneView } from './stages/Scene';
+import { PipelineRun } from './stages/PipelineRun';
 import { MapPage } from './stages/MapPage';
 import { ProvenancePage } from './stages/Provenance';
 import { Badge, Failed, Skeleton } from '../../design/components';
 import { fetchSlick, type SlickFeature } from '../../api/slicks';
 import { fetchIncident, resolveIncidentId } from '../../api/incidents';
+import { onDemoGoto } from '../demo';
 import type { Incident } from '../../incidents/types';
 import { STATE_LABEL, STATE_STATUS } from '../../incidents/words';
 import { SOURCES, when } from '../../format';
@@ -48,7 +50,8 @@ import { DetectionStage } from './stages/Detection';
 import { OriginStage } from './stages/Origin';
 import { VesselsStage } from './stages/Vessels';
 import { ForecastStage } from './stages/Forecast';
-import { ForecastPage } from './stages/ForecastPage';
+import { ForecastPage, baseProductContext } from './stages/ForecastPage';
+import { productContext } from '../../products/context';
 import { ResponseStage } from './stages/Response';
 import { EvidenceStage } from './stages/Evidence';
 import './workspace.css';
@@ -131,6 +134,9 @@ export function Workspace({ slickId }: { slickId: string }) {
   const [hasChart, setHasChart] = useState(false);
   const [railWidth, setRailWidth] = useState(340);
   const grab = useRef<{ x: number; width: number } | undefined>(undefined);
+  const [making, setMaking] = useState<'iap' | 'sitrep' | 'report'>();
+  const [pipelineOpen, setPipelineOpen] = useState(false);
+  const [failed, setFailed] = useState<string>();
 
   useEffect(() => {
     let current = true;
@@ -159,6 +165,37 @@ export function Workspace({ slickId }: { slickId: string }) {
       current = false;
     };
   }, [slickId]);
+
+  // The demo tour drives the pages. Declared after the reset above so it wins on a new slick.
+  useEffect(
+    () =>
+      onDemoGoto((view) => {
+        setStageId(undefined);
+        setTabId(view.tab);
+        if (view.tab === 'detection') setDetectionPanel(view.page);
+        else if (view.tab === 'temporal') {
+          setForecastPanel(view.page);
+          setForecastDirection(view.direction);
+        } else setResponsePanel(view.page);
+      }),
+    [slickId],
+  );
+
+  const download = async (kind: 'iap' | 'sitrep' | 'report') => {
+    if (!slick || slick === 'error') return;
+    setMaking(kind);
+    setFailed(undefined);
+    try {
+      const c = productContext(slick.id, baseProductContext(slick, incident));
+      const g = await import('../../products/generate');
+      await (kind === 'iap' ? g.downloadIap : kind === 'sitrep' ? g.downloadSitrep : g.downloadReport)(c);
+    } catch (error) {
+      console.error(error);
+      setFailed(kind);
+    } finally {
+      setMaking(undefined);
+    }
+  };
 
   if (slick === 'error') {
     return (
@@ -225,15 +262,6 @@ export function Workspace({ slickId }: { slickId: string }) {
           ))}
         </nav>
 
-        {tabId === 'response' && (
-          <div className="ws-pages is-dense" role="group" aria-label="Response pages">
-            {RESPONSE_PANELS.map(({ id, label, icon: Icon }) => (
-              <button key={id} type="button" aria-pressed={responsePanel === id} onClick={() => setResponsePanel(id)} title={label} aria-label={label}>
-                <Icon size={14} /><span>{label}</span>
-              </button>
-            ))}
-          </div>
-        )}
 
         {tabId === 'temporal' && (
           <div className="ws-pages" role="group" aria-label="Forecast pages">
@@ -261,6 +289,8 @@ export function Workspace({ slickId }: { slickId: string }) {
           * take away from the record rather than things you read it by. */}
         <span className="ws-when num">{when.format(observedAt)} UTC</span>
 
+        <button type="button" className="ws-run" onClick={() => setPipelineOpen(true)}><Play size={14} />Run pipeline</button>
+
         <details className="ws-export">
           <summary>
             <Download size={15} />
@@ -268,22 +298,25 @@ export function Workspace({ slickId }: { slickId: string }) {
             <ChevronDown size={14} aria-hidden="true" />
           </summary>
           <div className="ws-export-menu" role="menu">
-            {/* A bundle that carries its drafted products links them; the rest still say why not. */}
-            {(['sitrep', 'IAP'] as const).map((name) => {
-              const url = incident?.files[name.toLowerCase()];
-              return url ? (
-                <a key={name} role="menuitem" href={url} target="_blank" rel="noreferrer">
-                  {name.toUpperCase()}<small>Draft, unapproved · opens to print</small>
-                </a>
-              ) : (
-                <button key={name} type="button" role="menuitem" disabled>
-                  {name.toUpperCase()}<small>Generator not connected to this console yet</small>
-                </button>
-              );
-            })}
+            {/* Generated for this slick by the GUARDIANS document generators, saved as PDF. */}
+            {([['iap', 'IAP', 'Incident Action Plan'], ['sitrep', 'SITREP', 'Situation report'], ['report', 'Technical report', 'Full technical assessment']] as const).map(([kind, name, note]) => (
+              <button key={kind} type="button" role="menuitem" disabled={!!making} onClick={(e) => { e.currentTarget.closest("details")?.removeAttribute("open"); download(kind); }}>
+                {making === kind ? 'Generating…' : name}<small>{failed === kind ? 'Could not generate — try again' : `${note} · PDF`}</small>
+              </button>
+            ))}
           </div>
         </details>
       </header>
+
+      {pipelineOpen && (
+        <PipelineRun slick={slick} incident={incident} incidentId={incidentId} onClose={() => setPipelineOpen(false)}
+          onOpen={(where) => {
+            setPipelineOpen(false);
+            if (where === 'scene' || where === 'map') { setTabId('detection'); setDetectionPanel(where); }
+            else if (where === 'forecast') { setTabId('temporal'); setForecastPanel('overview'); setForecastDirection('backward'); }
+            else setTabId('response');
+          }} />
+      )}
 
       {tabId === 'detection' && detectionPanel === 'scene' ? (
         <SceneView slick={slick} incident={incident} incidentId={incidentId} />

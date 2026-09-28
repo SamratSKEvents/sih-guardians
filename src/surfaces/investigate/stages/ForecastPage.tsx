@@ -41,6 +41,11 @@ import './mapPage.css';
 import './forecastPage.css';
 import './response.css';
 import { buildPlan } from './responsePlan';
+import { estimateAge, type AgeEstimate } from '../../../forecast/age';
+import type { BacktrackMessage, BacktrackRequest } from '../../../forecast/backtrack.worker';
+import { card, hover } from './mapTip';
+import { useAttribution } from './attribution';
+import { setProductContext, type ProductContext } from '../../../products/context';
 import { drawResponse, focusOf, responseEvents, ResponsePane, RESPONSE_DEFAULTS, RESPONSE_LAYER_LABEL, usePlanState } from './ResponseView';
 
 type LayerKey = 'live' | 'observed' | 'steps' | 'track' | 'envelope' | 'source' | 'wind' | 'current' | 'coast' | 'borders' | 'protected' | 'towns' | 'sites' | 'vessels' | 'tracks';
@@ -56,6 +61,8 @@ const DEFAULTS: Record<ForecastPanel, LayerKey[]> = {
   vessels: ['live', 'observed', 'source', 'envelope', 'vessels', 'tracks'],
 };
 const STEP_HOURS = [6, 12, 24];
+/** How far back the trace and the clock go. */
+const BACK_H = 24;
 const STEP_FILL = ['#b9dcff', '#6fa8ea', '#2f6fc4'];
 const SPEEDS = [[60, '1×'], [300, '5×'], [900, '15×'], [1800, '30×'], [2400, '40×']] as const;
 const COMPASS = (d: number) => ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'][Math.round((((d % 360) + 360) % 360) / 22.5) % 16];
@@ -95,6 +102,21 @@ const callout = (text: string, cls: string, up: boolean, sub?: string) => L.divI
   html: `<span class="fc-maptag ${cls} ${up ? 'is-up' : 'is-down'}"><i></i><b>${text}${sub ? `<small>${sub}</small>` : ''}</b></span>`,
   iconSize: [0, 0],
 });
+
+/** What the document generators need, from the slick alone; the page refines drift and forcing once the run exists. */
+export function baseProductContext(slick: SlickFeature, incident: Incident | undefined): ProductContext {
+  const p = slick.properties;
+  const centre: Pt = Array.isArray(p.centroid) ? [Number(p.centroid[0]), Number(p.centroid[1])] : incident?.centre ? [incident.centre.lon, incident.centre.lat] : [0, 0];
+  const town = [...TOWNS].sort((x, y) => kmBetween(x.at, centre) - kmBetween(y.at, centre))[0]?.name ?? 'the coast';
+  const h = hashOf(slick.id);
+  const windFrom = (h * 37) % 360, curTo = (h * 53) % 360, wind = 4.5 + (h % 50) / 10, cur = 0.12 + (h % 25) / 100;
+  const areaM2 = Number(p.areaM2) || 0;
+  return {
+    slickId: slick.id, town, region: `${town} offshore`, t0: incident?.acquisitionTime ? Date.parse(incident.acquisitionTime) : Date.parse(String(p.observedAt)),
+    centre: { lat: centre[1], lon: centre[0] }, areaKm2: areaM2 / 1e6, lengthKm: (Number(p.lengthM) || Math.sqrt(areaM2) * 2) / 1000,
+    driftTowardDeg: curTo, windSpeedMs: wind, windFromDeg: windFrom, currentSpeedMs: cur, currentTowardDeg: curTo, waveHsM: 0.25 + wind * 0.08 + (h % 7) / 40,
+  };
+}
 
 const hashOf = (s: string) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
 
@@ -144,10 +166,11 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
   // blends between the frames either side of it, so the oil glides.
   const forcingKey = `${forcing.windSpeed}|${forcing.windDirDeg}|${forcing.driftU}|${forcing.driftV}`;
   const fwdRun = useLiveRun(release, volumeM3, forcing, false, 24, `${slick.id}|${forcingKey}`);
-  const bwdRun = useLiveRun(release, volumeM3, forcing, true, 12, `${slick.id}|${forcingKey}`);
+  const bwdRun = useLiveRun([], volumeM3, forcing, true, BACK_H, `${slick.id}|${forcingKey}`);
   const [t, setT] = useState(0);
+  const bwdHeadRef = useRef(0);
   const tRef = useRef(0);
-  const seek = (v: number) => { tRef.current = Math.max(-12, Math.min(24, v)); setT(tRef.current); };
+  const seek = (v: number) => { tRef.current = Math.max(-BACK_H, Math.min(24, v)); setT(tRef.current); };
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1800);
   useEffect(() => { seek(0); setPlaying(true); }, [slick.id]);
@@ -160,8 +183,8 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
       const wall = Math.min(0.1, (now - last) / 1000);
       last = now;
       const dir = backward ? -1 : 1;
-      const edge = backward ? -Math.min(12, bwdRun.head.current) : Math.min(24, fwdRun.head.current);
-      if ((backward && tRef.current <= -12 + 1e-6) || (!backward && tRef.current >= 24 - 1e-6)) { setPlaying(false); return; }
+      const edge = backward ? -Math.min(BACK_H, bwdHeadRef.current) : Math.min(24, fwdRun.head.current);
+      if ((backward && tRef.current <= -BACK_H + 1e-6) || (!backward && tRef.current >= 24 - 1e-6)) { setPlaying(false); return; }
       const next = tRef.current + (dir * wall * speed) / 3600;
       seek(backward ? Math.max(edge, next) : Math.min(edge, next));
     });
@@ -172,7 +195,7 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
     if (t < 0 && !backward) setDirection('backward');
     if (t > 0 && backward) setDirection('forward');
   }, [t < 0, t > 0]);
-  const run = t < 0 || (t === 0 && backward) ? bwdRun : fwdRun;
+  const run = fwdRun;
   const a = Math.abs(t);
   const i = Math.min(Math.floor((a * 60) / FRAME_MIN), Math.max(0, run.frames.current.length - 1));
   const fa = run.frames.current[i];
@@ -182,7 +205,7 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
   // centres so they overlap where the oil is now, rather than fading in place.
   const dx = fa && fb ? fb.centre[0] - fa.centre[0] : 0, dy = fa && fb ? fb.centre[1] - fa.centre[1] : 0;
   const shift = (b: [number, number, number, number], k: number): [number, number, number, number] => [b[0] + dx * k, b[1] + dy * k, b[2] + dx * k, b[3] + dy * k];
-  const overlay = {
+  const overlay = backward ? { a: undefined, b: undefined } : {
     a: fa?.canvas ? { canvas: fa.canvas, bounds: shift(fa.bounds, mix), opacity: 1 - mix * mix } : undefined,
     b: fb?.canvas && mix > 0 ? { canvas: fb.canvas, bounds: shift(fb.bounds, mix - 1), opacity: mix * (2 - mix) * 0.999 } : undefined,
   };
@@ -194,22 +217,35 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
   const [bwd, setBwd] = useState<OutlineStep[]>([]);
   const [coast, setCoast] = useState<CoastPoint[]>([]);
   const [outlineDone, setOutlineDone] = useState({ forward: false, backward: false });
+  const [envRings, setEnvRings] = useState<LonLat[][]>([]);
+  const [cloud, setCloud] = useState<{ hour: number; pts: LonLat[]; alive: number; beached: number }>();
+  const clouds = useRef(new Map<number, LonLat[]>());
   useEffect(() => {
     if (!release.length || volumeM3 <= 0) return;
-    setFwd([]); setBwd([]); setCoast([]); setOutlineDone({ forward: false, backward: false });
+    setFwd([]); setBwd([]); setCoast([]); setEnvRings([]); clouds.current.clear(); setOutlineDone({ forward: false, backward: false });
     const w = new Worker(new URL('../../../forecast/outline.worker.ts', import.meta.url), { type: 'module' });
     w.onmessage = (e: MessageEvent<OutlineMessage>) => {
       const m = e.data;
       if (m.kind === 'step') (m.dir === 'forward' ? setFwd : setBwd)((s) => [...s, m.step]);
       else if (m.kind === 'coast') setCoast(m.points);
+      else if (m.kind === 'envelope') setEnvRings(m.rings);
       else if (m.kind === 'done') setOutlineDone((s) => ({ ...s, [m.dir]: true }));
     };
-    w.postMessage({ rings: release, volumeM3, forcing, forwardH: 24, backwardH: 12 } satisfies OutlineRequest);
-    return () => w.terminate();
+    w.postMessage({ rings: release, volumeM3, forcing, forwardH: 24, backwardH: 0 } satisfies OutlineRequest);
+    // Backward: the reverse-time particle ensemble, not the reversed oil solver.
+    const b = new Worker(new URL('../../../forecast/backtrack.worker.ts', import.meta.url), { type: 'module' });
+    b.onmessage = (e: MessageEvent<BacktrackMessage>) => {
+      const m = e.data;
+      if (m.kind === 'step') { clouds.current.set(m.step.hour, m.cloud); bwdHeadRef.current = -m.step.hour; setBwd((x) => [...x, m.step]); setCloud({ hour: m.step.hour, pts: m.cloud, alive: m.alive, beached: m.beached }); }
+      else setOutlineDone((x) => ({ ...x, backward: true }));
+    };
+    b.postMessage({ rings: release, forcing, hours: BACK_H, seed: hashOf(slick.id) } satisfies BacktrackRequest);
+    return () => { w.terminate(); b.terminate(); };
   }, [slick.id, forcingKey]);
 
   /* ----------------------------------------------------------- vessels */
-  const [vessels, setVessels] = useState<MapVessel[]>();
+  const [rawVessels, setVessels] = useState<MapVessel[]>();
+  const vessels = useAttribution(rawVessels, slick, incident, incidentId, centre).vessels;
   useEffect(() => {
     if (!land) return;
     let live = true;
@@ -229,11 +265,12 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
   const labels: Record<string, string> = response ? { ...LAYER_LABEL, ...RESPONSE_LAYER_LABEL } : LAYER_LABEL;
   const [shown, setShown] = useState<Set<string>>(new Set(defaults));
   useEffect(() => setShown(new Set(defaults)), [page, response?.page]);
-  const [layersOpen, setLayersOpen] = useState(!response);
+  const [layersOpen, setLayersOpen] = useState(false);
   const [hover, setHover] = useState<Pt>();
 
   /* ---------------------------------------------------------- derived */
-  const d = useMemo(() => derive({ centre, fwd, bwd, coast, vessels: vessels ?? [], forcing, H: 12 }), [fwd, bwd, coast, vessels, forcing]);
+  const age = useMemo(() => estimateAge({ areaM2, windMs: forcing.windSpeed }), [areaM2, forcing.windSpeed]);
+  const d = useMemo(() => derive({ centre, fwd, bwd, coast, vessels: vessels ?? [], forcing, H: 12, age, envRings }), [fwd, bwd, coast, vessels, forcing, age, envRings]);
 
   /* -------------------------------------------------------- resizing */
   const [paneW, setPaneW] = useState(40);
@@ -256,6 +293,10 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
     slickId: slick.id, centre, fwd, coast, forcing, towns: TOWNS.filter((x) => kmBetween(x.at, centre) < 120), driftBearing: d.driftBearing, driftMs: d.driftMs,
     firstShore: d.firstShore, firstAt: d.firstAt, envelope: d.envelope, waveM, receptors: d.receptors, topVessel: d.top[0]?.v, state: planState,
   }) : undefined), [response !== undefined, fwd.length, coast, d, planState]);
+  useEffect(() => {
+    if (!d.last) return;
+    setProductContext({ ...baseProductContext(slick, incident), driftTowardDeg: d.driftBearing, windSpeedMs: forcing.windSpeed, windFromDeg: windFrom, currentSpeedMs: curMs, currentTowardDeg: curTo, waveHsM: waveM });
+  }, [slick.id, d.last?.hour, forcingKey]);
   const events = useMemo(() => [...timelineEvents(d, fwd, bwd), ...(plan ? responseEvents(plan, planState) : [])].sort((a, b) => a.h - b.h), [d, fwd.length, bwd.length, plan, planState]);
   const tKey = Math.round(t * 20) / 20;
 
@@ -266,11 +307,11 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
           <DriftMap
             centre={centre} rings={rings} shown={shown} overlay={overlay} fwd={fwd} bwd={bwd} coast={coast} vessels={d.top.map((r) => r.v)} selected={selected}
             onSelect={setSelected} landRings={landRings} forcing={forcing} backward={backward}
-            onHover={setHover} envelope={d.envelope}
-            extra={plan && response ? (g) => drawResponse(g, plan, shown, tKey, planState, response.page, (id) => { setPicked(id); response.setPage('assets'); }) : undefined}
+            onHover={setHover} envelope={d.envelope} envRings={envRings} t0={t0} origin={d.src} cloudAt={backward ? clouds.current.get(Math.max(-BACK_H, Math.round(t))) : undefined}
+            extra={plan && response ? (g) => drawResponse(g, plan, shown, tKey, planState, response.page, (id) => { setPicked(id); response.setPage(id.startsWith('boom:') ? 'containment' : 'assets'); }, picked) : undefined}
             focus={plan && response ? focusOf(plan, response.page, centre) : undefined}
             focusKey={plan && response ? `${response.page}|${plan.zones.length}` : ''}
-            extraKey={plan && response ? `${tKey}|${response.page}|${[...shown].join()}|${JSON.stringify(planState)}|${fwd.length}` : ''}
+            extraKey={plan && response ? `${tKey}|${picked}|${response.page}|${[...shown].join()}|${JSON.stringify(planState)}|${fwd.length}` : ''}
           />
           <div className="dm-overlay dm-legend fc-legend" data-open={layersOpen || undefined}>
             <header>
@@ -310,8 +351,8 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
           </div>
         </div>
         <ForecastTimeline
-          t={t} t0={t0} fwdHead={fwdRun.headH} bwdHead={bwdRun.headH} playing={playing} speed={speed} setSpeed={setSpeed} events={events}
-          onPlay={() => { if ((backward && t <= -12 + 1e-6) || (!backward && t >= 24 - 1e-6)) seek(0); setPlaying(!playing); }}
+          t={t} t0={t0} fwdHead={fwdRun.headH} bwdHead={Math.max(0, bwd.length - 1)} playing={playing} speed={speed} setSpeed={setSpeed} events={events}
+          onPlay={() => { if ((backward && t <= -BACK_H + 1e-6) || (!backward && t >= 24 - 1e-6)) seek(0); setPlaying(!playing); }}
           onSeek={(v) => { seek(v); }}
           direction={direction}
           onDirection={(dir) => { setDirection(dir); seek(0); setPlaying(true); }}
@@ -321,11 +362,7 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
       <aside className="dm-pane fc-pane">
         {problem && <section className="dm-card fc-warn"><AlertTriangle size={15} /><span>{problem}</span></section>}
         {response && (plan
-          ? <ResponsePane page={response.page} setPage={response.setPage} plan={plan} t={t} t0={t0} state={planState} setState={setPlanState} forcing={forcing} waveM={waveM} firstShore={d.firstShore} picked={picked} setPicked={setPicked} products={{
-            slickId: slick.id, town: [...TOWNS].sort((x, y) => kmBetween(x.at, centre) - kmBetween(y.at, centre))[0]?.name ?? 'the coast', region: `${[...TOWNS].sort((x, y) => kmBetween(x.at, centre) - kmBetween(y.at, centre))[0]?.name ?? 'Coastal'} offshore`,
-            t0, centre: { lat: centre[1], lon: centre[0] }, areaKm2: areaM2 / 1e6, lengthKm: (Number(p.lengthM) || Math.sqrt(areaM2) * 2) / 1000, driftTowardDeg: d.driftBearing,
-            windSpeedMs: forcing.windSpeed, windFromDeg: windFrom, currentSpeedMs: curMs, currentTowardDeg: curTo, waveHsM: waveM,
-          }} />
+          ? <ResponsePane page={response.page} setPage={response.setPage} plan={plan} t={t} t0={t0} state={planState} setState={setPlanState} forcing={forcing} waveM={waveM} firstShore={d.firstShore} picked={picked} setPicked={setPicked} />
           : <p className="dm-loading">Building the response plan from the forecast…</p>)}
         {!response && page === 'overview' && <Overview d={d} fwd={fwd} bwd={bwd} stats={stats} backward={backward} forcing={forcing} areaM2={areaM2} volumeM3={volumeM3} shownHour={display} t0={t0} setPage={setPage} setDirection={setDirection} waveM={waveM} sstC={sstC} windFrom={windFrom} curMs={curMs} curTo={curTo} />}
         {!response && page === 'environment' && <EnvironmentPane d={d} forcing={forcing} windFrom={windFrom} curMs={curMs} curTo={curTo} waveM={waveM} sstC={sstC} t0={t0} />}
@@ -340,16 +377,16 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
 
 type Derived = ReturnType<typeof derive>;
 
-function derive({ centre, fwd, bwd, coast, vessels, forcing, H }: { centre: Pt; fwd: OutlineStep[]; bwd: OutlineStep[]; coast: CoastPoint[]; vessels: MapVessel[]; forcing: Forcing; H: number }) {
+function derive({ centre, fwd, bwd, coast, vessels, forcing, H, age, envRings }: { centre: Pt; fwd: OutlineStep[]; bwd: OutlineStep[]; coast: CoastPoint[]; vessels: MapVessel[]; forcing: Forcing; H: number; age: AgeEstimate; envRings: LonLat[][] }) {
   const step = (hr: number) => fwd.find((s) => s.hour === hr);
   const last = fwd[fwd.length - 1];
   const driftKm = last ? kmBetween(centre, last.centre) : 0;
   const driftBearing = last ? bearingOf(centre, last.centre) : 0;
   const driftMs = last && last.hour ? (driftKm * 1000) / (last.hour * 3600) : 0;
-  const envelopePts = fwd.flatMap((s) => s.hull);
-  const envelope = hull2(envelopePts);
-  const envelopeKm2 = polyKm2(envelope);
-  const src = bwd[bwd.length - 1];
+  const envelope = envRings.length ? envRings.flat() : hull2(fwd.flatMap((s) => s.hull));
+  const envelopeKm2 = envRings.length ? envRings.reduce((a, r) => a + polyKm2(r), 0) : polyKm2(envelope);
+  // The origin: where the backward ensemble is at the estimated age of the slick.
+  const src = bwd.find((x) => x.hour === -Math.min(BACK_H, Math.round(age.bestH)));
   const sourceKm = src ? kmBetween(centre, src.centre) : undefined;
   const sourceBearing = src ? bearingOf(centre, src.centre) : undefined;
 
@@ -383,34 +420,16 @@ function derive({ centre, fwd, bwd, coast, vessels, forcing, H }: { centre: Pt; 
     const toSource = src ? Math.min(...(pts.length ? pts : [{ lon: now.at[0], lat: now.at[1], t: 0 }]).map((q) => kmBetween([q.lon, q.lat], src.centre as Pt))) : undefined;
     return { v, now, dist: kmBetween(now.at, centre), toSource, insideH: inside.length > 1 ? inside[inside.length - 1].t - inside[0].t : 0, firstSeen: v.points[0]?.t, lastSeen: v.points[v.points.length - 1]?.t };
   });
-  // Where each vessel came closest to the backward-traced oil, and when.
-  const traceAt = (h: number): Pt | undefined => {
-    const k = Math.floor(-h), f = -h - k;
-    const a = bwd.find((x) => x.hour === -k), b = bwd.find((x) => x.hour === -k - 1);
-    if (!a) return undefined;
-    return b ? [a.centre[0] + (b.centre[0] - a.centre[0]) * f, a.centre[1] + (b.centre[1] - a.centre[1]) * f] : (a.centre as Pt);
-  };
-  const scored = rows0.map((r) => {
-    let pass: { h: number; km: number } | undefined;
-    for (let h = 0; h >= -12; h -= 0.25) {
-      const c = traceAt(h);
-      if (!c) continue;
-      const km = kmBetween(vesselAt(r.v, h).at, c);
-      if (!pass || km < pass.km) pass = { h, km };
-    }
-    const gapIn = r.v.gaps.some(([g0, g1]) => g1 >= -12 && g0 <= 0);
-    const tanker = r.v.kind === 'tanker' || r.v.kind === 'gas';
-    // ponytail: hand-weighted blend of the ranker's score and the trace; a calibrated model would replace it.
-    const raw = 0.45 * (r.v.score ?? 0.15) + 0.35 * Math.exp(-(pass?.km ?? r.dist) / 5) + (r.insideH ? 0.1 : 0) + (gapIn ? 0.06 : 0) + (tanker ? 0.04 : 0);
-    return { ...r, pass, raw };
-  });
-  const total = scored.reduce((s, r) => s + r.raw, 0) || 1;
-  const ranked = scored.map((r) => ({ ...r, prob: r.raw / total })).sort((a, b) => b.prob - a.prob);
+  // Ranking is the shared attribution's (attribution.ts), so every page agrees.
+  const traceReady = vessels.some((v) => v.features !== undefined || v.excluded !== undefined);
+  const ranked = rows0.filter((r) => !r.v.excluded && r.v.rank !== undefined)
+    .map((r) => ({ ...r, pass: r.v.pass, prob: r.v.share ?? 0, inWindow: (r.v.features?.timing ?? 0) > 0.9 }))
+    .sort((x, y) => (x.v.rank ?? 99) - (y.v.rank ?? 99));
   const top = ranked.slice(0, 5);
 
   const risk: 'High' | 'Medium' | 'Low' = firstShore !== undefined && firstShore <= 12 ? 'High' : firstShore !== undefined ? 'Medium' : 'Low';
   const windage = forcing.windSpeed * 0.03;
-  return { step, last, driftKm, driftBearing, driftMs, envelope, envelopeKm2, src, sourceKm, sourceBearing, bands, firstShore, firstAt, hit, towns, receptors, sites, rows: ranked, top, total: vessels.length, risk, windage, centre };
+  return { step, last, driftKm, driftBearing, driftMs, envelope, envelopeKm2, src, sourceKm, sourceBearing, bands, firstShore, firstAt, hit, towns, receptors, sites, rows: ranked, top, total: vessels.length, traceReady, age, envRings, risk, windage, centre };
 }
 
 function reachAt(fwd: OutlineStep[], q: Pt) {
@@ -482,8 +501,9 @@ class CanvasOverlay extends L.ImageOverlay {
 }
 
 function DriftMap({
-  centre, rings, shown, overlay, fwd, bwd, coast, vessels, selected, onSelect, landRings, forcing, backward, onHover, envelope, extra, extraKey, focus, focusKey,
+  centre, rings, shown, overlay, fwd, bwd, coast, vessels, selected, onSelect, landRings, forcing, backward, onHover, envelope, extra, extraKey, focus, focusKey, t0, origin, cloudAt, envRings,
 }: {
+  t0: number; origin?: OutlineStep; cloudAt?: LonLat[]; envRings: LonLat[][];
   extra?: (g: L.LayerGroup) => void; extraKey?: string; focus?: Pt[]; focusKey?: string;
   centre: Pt; rings: number[][][]; shown: Set<string>; overlay: Record<'a' | 'b', { canvas: HTMLCanvasElement; bounds: [number, number, number, number]; opacity: number } | undefined>;
   fwd: OutlineStep[]; bwd: OutlineStep[]; coast: CoastPoint[]; vessels: MapVessel[]; selected?: string; onSelect: (id?: string) => void;
@@ -504,6 +524,7 @@ function DriftMap({
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 17, opacity: 0.75 }).addTo(m);
     L.control.zoom({ position: 'bottomright' }).addTo(m);
     L.control.scale({ position: 'bottomright', imperial: false }).addTo(m);
+    m.attributionControl.addAttribution('Coastline © OpenStreetMap contributors (ODbL)');
     m.setView(ll(centre), 11);
     m.on('mousemove', (e) => onHover([e.latlng.lng, e.latlng.lat]));
     m.on('mouseout', () => onHover(undefined));
@@ -557,17 +578,17 @@ function DriftMap({
       L.polyline(r.map(ll), { color: '#a8efc5', weight: 2.2, interactive: false }).addTo(g);
     }
     if (shown.has('protected')) for (const a of PROTECTED.filter((x) => near(x.at, 120))) {
-      L.circle(ll(a.at), { radius: a.radiusKm * 1000, className: 'dm-protected', interactive: false }).addTo(g);
+      hover(L.circle(ll(a.at), { radius: a.radiusKm * 1000, className: 'dm-protected' }), () => card(a.name, a.kind, [['Radius', `${a.radiusKm} km`], ['From slick', `${f1(Math.max(0, kmBetween(a.at, centre) - a.radiusKm))} km to edge`]])).addTo(g);
       L.marker(ll(move(a.at, 0, a.radiusKm * 0.6)), { icon: chip(`${a.name}`, 'is-clear'), interactive: false }).addTo(g);
     }
-    if (shown.has('envelope') && envelope.length > 2 && !backward) {
-      L.polygon(envelope.map(ll), { className: 'fc-envelope', dashArray: '8 7', interactive: false }).addTo(g);
+    if (shown.has('envelope') && envRings.length && !backward) {
+      hover(L.polygon(envRings.map((r) => r.map(ll)), { className: 'fc-envelope', dashArray: '8 7' }), () => card('Uncertainty envelope', 'Everywhere the oil reaches in 24 h', [['Area', `${f1(envRings.reduce((a, r) => a + polyKm2(r), 0))} km²`]])).addTo(g);
     }
     if (shown.has('steps') && !backward) STEP_HOURS.slice().reverse().forEach((hr) => {
       const s = fwd.find((x) => x.hour === hr);
       if (!s || s.hull.length < 3) return;
       const k = STEP_HOURS.indexOf(hr);
-      L.polygon(s.hull.map(ll), { color: '#ffffff', weight: 1, opacity: 0.55, fillColor: STEP_FILL[k], fillOpacity: 0.34, interactive: false }).addTo(g);
+      hover(L.polygon((s.rings?.length ? s.rings : [s.hull]).map((r) => r.map(ll)), { color: '#ffffff', weight: 1, opacity: 0.55, fillColor: STEP_FILL[k], fillOpacity: 0.34 }), () => card(`Forecast +${hr} h`, `${when.format(t0 + hr * 3_600_000)} UTC`, [['Area', `${f2(s.areaKm2)} km²`], ['From slick', `${f1(kmBetween(centre, s.centre as Pt))} km ${COMPASS(bearingOf(centre, s.centre as Pt))}`], ['Afloat', `${Math.round((100 * s.afloat) / Math.max(s.released, 1e-9))} %`], ['Evaporated', `${Math.round((100 * s.evaporated) / Math.max(s.released, 1e-9))} %`]])).addTo(g);
     });
     if (shown.has('track') && fwd.length > 1 && !backward) {
       L.polyline(fwd.map((s) => ll(s.centre)), { color: '#ffffff', weight: 2, dashArray: '6 6', opacity: 0.9, interactive: false }).addTo(g);
@@ -579,26 +600,27 @@ function DriftMap({
       }
     }
     if (shown.has('source') && bwd.length > 1) {
-      const src = bwd[bwd.length - 1];
-      L.polyline([centre, ...bwd.map((s) => s.centre)].map(ll), { color: '#ffb547', weight: 2, dashArray: '3 6', interactive: false }).addTo(g);
-      if (src.hull.length > 2) L.polygon(src.hull.map(ll), { className: 'fc-source', interactive: false }).addTo(g);
-      if (backward) for (const hr of [-3, -6, -9]) {
+      const src = origin;
+      L.polyline([centre, ...bwd.filter((s) => !src || s.hour >= src.hour).map((s) => s.centre)].map(ll), { color: '#ffb547', weight: 2, dashArray: '3 6', interactive: false }).addTo(g);
+      if (src && src.hull.length > 2) hover(L.polygon((src.rings?.length ? src.rings : [src.hull]).map((r) => r.map(ll)), { className: 'fc-source' }), () => card('Estimated origin', `${signed(src.hour)} · reverse-time particle ensemble`, [['From slick', `${f1(kmBetween(centre, src.centre as Pt))} km ${COMPASS(bearingOf(centre, src.centre as Pt))}`], ['Area', `${f2(src.areaKm2)} km²`]])).addTo(g);
+      if (backward) for (const hr of [-6, -12, -18]) {
         const s = bwd.find((x) => x.hour === hr);
         if (!s) continue;
         L.circleMarker(ll(s.centre), { radius: 4, color: '#fff', weight: 1.5, fillColor: '#ffb547', fillOpacity: 1, interactive: false }).addTo(g);
         L.marker(ll(s.centre), { icon: callout(signed(hr).replace('.0', ''), 'is-source', hr % 6 === 0), interactive: false }).addTo(g);
       }
-      L.marker(ll(src.centre), { icon: callout('Source', 'is-source', false, signed(src.hour).replace('.0', '')), interactive: false }).addTo(g);
+      if (src) L.marker(ll(src.centre), { icon: callout('Origin', 'is-source', false, signed(src.hour).replace('.0', '')), interactive: false }).addTo(g);
     }
     if (shown.has('coast')) for (const c of coast) {
       if (c.hour === null) continue;
-      L.circleMarker(ll(c.at), { radius: 3.2, stroke: false, fillColor: c.hour <= 6 ? '#e3464d' : c.hour <= 12 ? '#ff7a3d' : '#f5c542', fillOpacity: 0.95, interactive: false }).addTo(g);
+      const hr = c.hour;
+      hover(L.circleMarker(ll(c.at), { radius: 3.2, stroke: false, fillColor: hr <= 6 ? '#e3464d' : hr <= 12 ? '#ff7a3d' : '#f5c542', fillOpacity: 0.95 }), () => card('Oil reaches this coast', `+${hr} h · ${when.format(t0 + hr * 3_600_000)} UTC`, [['Risk band', hr <= 12 ? '0–12 h (high)' : '12–24 h (medium)'], ['Nearest town', [...TOWNS].sort((x, y) => kmBetween(x.at, c.at as Pt) - kmBetween(y.at, c.at as Pt))[0]?.name]])).addTo(g);
     }
     if (shown.has('sites')) for (const s of SITES.filter((x) => near(x.at, 80))) {
-      L.marker(ll(s.at), { icon: L.divIcon({ className: 'dm-site', html: `<i class="dm-site-dot is-${s.kind}"></i>`, iconSize: [12, 12] }), title: s.name }).addTo(g);
+      hover(L.marker(ll(s.at), { icon: L.divIcon({ className: 'dm-site', html: `<i class="dm-site-dot is-${s.kind}"></i>`, iconSize: [12, 12] }) }), () => card(s.name, s.operator, [['Type', s.kind === 'spm' ? 'Single-point mooring' : s.kind === 'platform' ? 'Offshore platform' : 'Oil terminal'], ['From slick', `${f1(kmBetween(s.at, centre))} km`]])).addTo(g);
     }
     if (shown.has('towns')) for (const t of TOWNS.filter((x) => near(x.at, 120))) {
-      L.circleMarker(ll(t.at), { radius: 3.5, color: '#0b0f14', weight: 1.5, fillColor: '#ffffff', fillOpacity: 1, interactive: false }).addTo(g);
+      hover(L.circleMarker(ll(t.at), { radius: 5, color: '#0b0f14', weight: 1.5, fillColor: '#ffffff', fillOpacity: 1 }), () => { const first = coast.filter((c) => c.hour !== null && kmBetween(t.at, c.at as Pt) < 8).map((c) => c.hour as number); return card(t.name, 'Coastal town', [['From slick', `${f1(kmBetween(t.at, centre))} km`], ['Oil arrives', first.length ? `+${Math.min(...first)} h` : 'not within 24 h']]); }).addTo(g);
       L.marker(ll(t.at), { icon: L.divIcon({ className: 'dm-chip-anchor', html: `<span class="fc-town">${t.name}</span>`, iconSize: [0, 0] }), interactive: false }).addTo(g);
     }
     if (shown.has('tracks')) for (const v of vessels) {
@@ -607,17 +629,27 @@ function DriftMap({
     }
     if (shown.has('vessels')) for (const v of vessels) {
       const now = vesselAt(v, 0);
-      const mk = L.marker(ll(now.at), { icon: shipIcon(v, tone(v, selected)) }).addTo(g);
+      const mk = hover(L.marker(ll(now.at), { icon: shipIcon(v, tone(v, selected)) }), () => card(v.name, `${v.type} · ${v.flag}`, [['Rank', v.rank ? `#${v.rank}` : '—'], ['From slick', `${f1(kmBetween(now.at, centre))} km`], ['Speed · course', `${f1(now.knots)} kn · ${now.heading.toFixed(0)}°`], ['AIS silences', v.gaps.length ? `${v.gaps.length}` : 'none']])).addTo(g);
       const el = mk.getElement()?.querySelector('svg');
       if (el) el.style.transform = `rotate(${now.heading}deg)`;
       mk.on('click', () => onSelect(v.id));
       if (v.rank && v.rank <= 3 || v.id === selected) L.marker(ll(now.at), { icon: chip(`${v.name} · ${v.type}`, v.id === selected ? 'is-selected' : ''), interactive: false }).addTo(g);
     }
     if (shown.has('observed')) {
-      for (const r of rings) L.polygon(r.map((q) => ll(q as Pt)), { color: '#ff8a3c', weight: 2, fillColor: '#ff8a3c', fillOpacity: 0.28, interactive: false }).addTo(g);
+      for (const r of rings) hover(L.polygon(r.map((q) => ll(q as Pt)), { color: '#ff8a3c', weight: 2, fillColor: '#ff8a3c', fillOpacity: 0.28 }), () => card('Detected slick', `T0 · ${when.format(t0)} UTC`, [['Parts', rings.length]])).addTo(g);
       L.marker(ll(centre), { icon: callout('T0', 'is-slick', false, 'detected'), interactive: false }).addTo(g);
     }
-  }, [shown, fwd.length, bwd.length, coast, vessels, selected, landRings, envelope.length, backward]);
+  }, [shown, fwd.length, bwd.length, coast, vessels, selected, landRings, envelope.length, envRings, backward, origin?.hour]);
+
+  // The backward ensemble's particles, at the clock's hour.
+  const cloudGroup = useRef<L.LayerGroup | undefined>(undefined);
+  useEffect(() => {
+    cloudGroup.current?.remove();
+    if (!backward || !shown.has('source') || !cloudAt?.length) return;
+    const g = L.layerGroup().addTo(map.current!);
+    cloudGroup.current = g;
+    for (const p of cloudAt) L.circleMarker(ll(p), { radius: 1.8, stroke: false, fillColor: '#ffcf70', fillOpacity: 0.8, interactive: false }).addTo(g);
+  }, [cloudAt, backward, shown]);
 
   // The Response tab's own layers, redrawn as the clock moves.
   const extraGroup = useRef<L.LayerGroup | undefined>(undefined);
@@ -751,23 +783,24 @@ function timelineEvents(d: Derived, fwd: OutlineStep[], bwd: OutlineStep[]): TlE
   const stranded = fwd.find((s) => s.stranded / Math.max(s.released, 1e-9) >= 0.05);
   if (stranded) out.push({ h: stranded.hour, label: '5 % ashore', detail: 'One twentieth of the oil is stranded', tone: 'critical' });
 
-  const src = bwd[bwd.length - 1];
-  if (src && src.hour <= -12) out.push({ h: -12, label: 'Earliest trace', detail: `${f1(d.sourceKm ?? 0)} km ${COMPASS(d.sourceBearing ?? 0)} of the slick`, tone: 'reconstructed' });
+  // The release window the slick's age allows, and the origin at its best estimate.
+  out.push({ h: -Math.min(BACK_H, d.age.highH), to: -d.age.lowH, label: 'Release window (age)', detail: `Spreading says the slick is ${f1(d.age.lowH)}–${f1(d.age.highH)} h old`, tone: 'reconstructed' });
+  if (d.src) out.push({ h: d.src.hour, label: 'Estimated origin', detail: `${f1(d.sourceKm ?? 0)} km ${COMPASS(d.sourceBearing ?? 0)} of the slick`, tone: 'reconstructed', primary: true });
   // Where the top candidates came closest to the backward track: the likely release moments.
   d.top.slice(0, 3).forEach((r, k) => {
     if (r.pass === undefined) return;
     out.push({ h: r.pass.h, quiet: k > 0, label: k === 0 ? `Possible release · ${r.v.name}` : `Closest pass · ${r.v.name}`, detail: `${f1(r.pass.km)} km from the traced oil · ${Math.round(r.prob * 100)} % of attribution`, tone: k === 0 ? 'critical' : 'reconstructed', primary: k === 0, to: k === 0 ? Math.min(0, r.pass.h + 1) : undefined });
   });
   for (const r of d.top.slice(0, 3)) for (const [g0, g1] of r.v.gaps) {
-    if (g1 < -12 || g0 > 0) continue;
-    out.push({ h: Math.max(-12, g0), to: Math.min(0, g1), label: `AIS silent · ${r.v.name}`, detail: `${Math.round((g1 - g0) * 60)} min without a position`, tone: 'warning' });
+    if (g1 < -BACK_H || g0 > 0) continue;
+    out.push({ h: Math.max(-BACK_H, g0), to: Math.min(0, g1), label: `AIS silent · ${r.v.name}`, detail: `${Math.round((g1 - g0) * 60)} min without a position`, tone: 'warning' });
   }
   return out.sort((a, b) => a.h - b.h);
 }
 
 /* ================================================================ timeline */
 
-const T_MIN = -12, T_MAX = 24, SPAN = T_MAX - T_MIN;
+const T_MIN = -BACK_H, T_MAX = 24, SPAN = T_MAX - T_MIN;
 const pct = (h: number) => ((h - T_MIN) / SPAN) * 100;
 const clockOf = (ms: number) => new Date(ms).toISOString().slice(11, 16);
 const dayOf = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
@@ -806,7 +839,7 @@ function ForecastTimeline({ t, t0, fwdHead, bwdHead, playing, speed, setSpeed, e
     <footer className="tl fc-tl">
       <div className="tl-bar">
         <div className="fc-dir" role="group" aria-label="Direction">
-          <button type="button" aria-pressed={direction === 'backward'} onClick={() => onDirection('backward')}>Backward 12 h</button>
+          <button type="button" aria-pressed={direction === 'backward'} onClick={() => onDirection('backward')}>Backward 24 h</button>
           <button type="button" aria-pressed={direction === 'forward'} onClick={() => onDirection('forward')}>Forward 24 h</button>
         </div>
         <div className="tl-transport">
@@ -841,7 +874,7 @@ function ForecastTimeline({ t, t0, fwdHead, bwdHead, playing, speed, setSpeed, e
         >
           <span className="fc-zone is-recon" style={{ left: 0, width: `${pct(0)}%` }} />
           <span className="fc-zone is-pred" style={{ left: `${pct(0)}%`, right: 0 }} />
-          <span className="fc-done is-recon" style={{ left: `${pct(-Math.min(12, bwdHead))}%`, width: `${pct(0) - pct(-Math.min(12, bwdHead))}%` }} />
+          <span className="fc-done is-recon" style={{ left: `${pct(-Math.min(BACK_H, bwdHead))}%`, width: `${pct(0) - pct(-Math.min(BACK_H, bwdHead))}%` }} />
           <span className="fc-done is-pred" style={{ left: `${pct(0)}%`, width: `${pct(Math.min(24, fwdHead)) - pct(0)}%` }} />
           {ticks.map((h) => <span key={h} className={`tl-tick${h % 6 === 0 ? ' is-labelled' : ''}`} style={{ left: `${pct(h)}%` }}>{h % 6 === 0 && <span className={`tl-tick-label num${h === T_MAX ? ' is-end' : ''}`}>{h === 0 ? 'T0' : `${h > 0 ? '+' : '−'}${Math.abs(h)} h`}</span>}</span>)}
           {placed.filter((e) => e.to !== undefined).map((e, k) => <span key={`b${k}`} className={`fc-band is-${e.tone}`} style={{ left: `${pct(e.h)}%`, width: `${Math.max(0.4, pct(e.to!) - pct(e.h))}%` }} title={`${e.label}: ${e.detail}`} />)}
@@ -875,7 +908,7 @@ function Overview({ d, fwd, bwd, stats, backward, forcing, areaM2, volumeM3, sho
   d: Derived; fwd: OutlineStep[]; bwd: OutlineStep[]; stats?: LiveStats; backward: boolean; forcing: Forcing; areaM2: number; volumeM3: number; shownHour: number; t0: number;
   setPage: (p: ForecastPanel) => void; setDirection: (x: ForecastDirection) => void; waveM: number; sstC: number; windFrom: number; curMs: number; curTo: number;
 }) {
-  const rows = backward ? [0, 3, 6, 9, 12].map((hr) => bwd.find((s) => s.hour === -hr)) : [0, 6, 12, 24].map((hr) => fwd.find((s) => s.hour === hr));
+  const rows = backward ? [0, 6, 12, 18, 24].map((hr) => bwd.find((s) => s.hour === -hr)) : [0, 6, 12, 24].map((hr) => fwd.find((s) => s.hour === hr));
   const pct = (a: number, s: OutlineStep) => `${Math.round((100 * a) / Math.max(s.released, 1e-9))} %`;
   return (
     <>
@@ -884,7 +917,7 @@ function Overview({ d, fwd, bwd, stats, backward, forcing, areaM2, volumeM3, sho
           <h2>{backward ? 'Where the oil came from' : 'Where the oil goes'}</h2>
           <p>
             {backward
-              ? d.src ? `Run backwards 12 h with the forcing reversed, the slick traces to a region ${f1(d.sourceKm ?? 0)} km ${COMPASS(d.sourceBearing ?? 0)} of the detection, around ${when.format(t0 - 12 * 3_600_000)} UTC.` : 'Tracing the slick backwards…'
+              ? d.src ? `Traced back ${f1(d.age.bestH)} h (the slick's estimated age), 1,000 particles put the release ${f1(d.sourceKm ?? 0)} km ${COMPASS(d.sourceBearing ?? 0)} of the detection, around ${when.format(t0 + d.src.hour * 3_600_000)} UTC.` : 'Tracing the slick backwards…'
               : d.last ? `Drifting ${COMPASS(d.driftBearing)} at about ${f2(d.driftMs)} m/s; ${f1(d.driftKm)} km by +${d.last.hour} h. ${d.firstShore !== undefined ? `First shore contact at +${d.firstShore} h.` : 'No shore contact within the run.'}` : 'Computing the horizon run…'}
           </p>
         </div>
@@ -897,27 +930,27 @@ function Overview({ d, fwd, bwd, stats, backward, forcing, areaM2, volumeM3, sho
         <Tile label="Drift toward" value={d.last ? `${Math.round(d.driftBearing)}°` : '…'} note={d.last ? `${COMPASS(d.driftBearing)} · ${f2(d.driftMs)} m/s` : undefined} />
         <Tile label="First shore contact" value={d.firstShore !== undefined ? `+${d.firstShore}` : '—'} unit={d.firstShore !== undefined ? 'h' : undefined} note={d.firstShore !== undefined ? 'nearest landfall' : 'none in 24 h'} tone={d.risk === 'High' ? 'critical' : d.risk === 'Medium' ? 'warning' : 'clear'} />
         <Tile label="Envelope" value={f1(d.envelopeKm2)} unit="km²" note="all hours to +24 h" />
-        <Tile label="Source region" value={d.sourceKm !== undefined ? f1(d.sourceKm) : '…'} unit="km" note={d.sourceBearing !== undefined ? `${COMPASS(d.sourceBearing)} · −12 h` : 'backward run'} />
+        <Tile label="Source region" value={d.sourceKm !== undefined ? f1(d.sourceKm) : '…'} unit="km" note={d.sourceBearing !== undefined && d.src ? `${COMPASS(d.sourceBearing)} · ${signed(d.src.hour)}` : 'backward run'} />
       </section>
 
       <section className="dm-card">
-        <header className="dm-head"><h3><Clock size={15} />Key {backward ? 'backtrack' : 'forecast'} times</h3><span className="dm-meta">100 m horizon run</span></header>
+        <header className="dm-head"><h3><Clock size={15} />Key {backward ? 'backtrack' : 'forecast'} times</h3><span className="dm-meta">{backward ? '1,000-particle reverse-time ensemble' : '100 m horizon run'}</span></header>
         <div className="dm-table-wrap fc-tablewrap">
           <table className="dm-table">
-            <thead><tr><th>Time</th><th>UTC</th><th className="is-num">Area km²</th><th className="is-num">Afloat</th><th className="is-num">Evap.</th><th className="is-num">Disp.</th><th className="is-num">Ashore</th><th className="is-num">From slick</th></tr></thead>
+            <thead><tr><th>Time</th><th>UTC</th><th className="is-num">{backward ? 'Spread km²' : 'Area km²'}</th>{!backward && <><th className="is-num">Afloat</th><th className="is-num">Evap.</th><th className="is-num">Disp.</th><th className="is-num">Ashore</th></>}<th className="is-num">From slick</th></tr></thead>
             <tbody>
               {rows.map((s, i) => s ? (
                 <tr key={s.hour}>
                   <td><span className="fc-swatch" style={{ background: s.hour === 0 ? '#ff8a3c' : backward ? '#ffb547' : STEP_FILL[i - 1] }} />{s.hour === 0 ? 'Now' : signed(s.hour)}</td>
                   <td className="num">{when.format(t0 + s.hour * 3_600_000).split(', ').at(-1)}</td>
                   <td className="is-num">{f2(s.areaKm2)}</td>
-                  <td className="is-num">{pct(s.afloat, s)}</td>
+                  {!backward && <><td className="is-num">{pct(s.afloat, s)}</td>
                   <td className="is-num">{pct(s.evaporated, s)}</td>
                   <td className="is-num">{pct(s.dispersed, s)}</td>
-                  <td className="is-num">{pct(s.stranded, s)}</td>
+                  <td className="is-num">{pct(s.stranded, s)}</td></>}
                   <td className="is-num">{f1(kmBetween(d.centre, s.centre as Pt))} km</td>
                 </tr>
-              ) : <tr key={i}><td colSpan={8} className="dm-meta">computing…</td></tr>)}
+              ) : <tr key={i}><td colSpan={backward ? 4 : 8} className="dm-meta">computing…</td></tr>)}
             </tbody>
           </table>
         </div>
@@ -928,16 +961,27 @@ function Overview({ d, fwd, bwd, stats, backward, forcing, areaM2, volumeM3, sho
           <header className="dm-head"><h3><Activity size={15} />Area over time</h3><span className="dm-meta">km²</span></header>
           <AreaChart steps={backward ? [...bwd].reverse() : fwd} now={shownHour} backward={backward} />
         </section>
-        <section className="dm-card">
-          <header className="dm-head"><h3><Droplets size={15} />Where the oil is</h3><span className="dm-meta">share of released</span></header>
-          <BudgetChart steps={backward ? [...bwd].reverse() : fwd} backward={backward} />
-        </section>
+        {backward ? (
+          <section className="dm-card">
+            <header className="dm-head"><h3><Clock size={15} />Release time</h3><span className="dm-meta">from the slick's spread</span></header>
+            <dl className="dm-rows">
+              <div><dt>Age</dt><dd className="num">{f1(d.age.lowH)}–{f1(d.age.highH)} h</dd></div>
+              <div><dt>Most likely</dt><dd className="num">{when.format(t0 - d.age.bestH * 3_600_000)} UTC</dd></div>
+              <div><dt>Window</dt><dd className="num">{when.format(t0 - d.age.highH * 3_600_000).split(', ').at(-1)}–{when.format(t0 - d.age.lowH * 3_600_000).split(', ').at(-1)} UTC</dd></div>
+            </dl>
+          </section>
+        ) : (
+          <section className="dm-card">
+            <header className="dm-head"><h3><Droplets size={15} />Where the oil is</h3><span className="dm-meta">share of released</span></header>
+            <BudgetChart steps={fwd} backward={false} />
+          </section>
+        )}
       </div>
 
       <section className="dm-card">
         <header className="dm-head"><h3><Gauge size={15} />Live run</h3><span className="dm-meta num">{signed(shownHour)}</span></header>
         <dl className="dm-rows fc-cols">
-          <div><dt>Solver</dt><dd>GlobeMaster, reduced scalar · 50 m</dd></div>
+          <div><dt>Solver</dt><dd>GlobeMaster · 50 m</dd></div>
           <div><dt>Oil released</dt><dd className="num">{f1(volumeM3)} m³ <small>assumed {ASSUMED_MEAN_UM} µm mean</small></dd></div>
           <div><dt>Visible area</dt><dd className="num">{stats ? f2(stats.areaKm2) : '—'} km²</dd></div>
           <div><dt>Afloat</dt><dd className="num">{stats ? f1(stats.afloat) : '—'} m³</dd></div>
@@ -949,23 +993,11 @@ function Overview({ d, fwd, bwd, stats, backward, forcing, areaM2, volumeM3, sho
         <p className="fc-note">{forcing.provenance}{backward ? ' Backward runs reverse wind and current; spreading and weathering still run forwards, so the source region is a search area, not a release point.' : ''}</p>
       </section>
 
-      <div className="dm-grid">
-        <section className="dm-card fc-link" onClick={() => setPage('environment')}>
-          <header className="dm-head"><h3><Wind size={15} />Conditions</h3><ArrowRight size={14} /></header>
-          <dl className="dm-rows">
-            <div><dt>Wind</dt><dd className="num">{f1(forcing.windSpeed)} m/s from {COMPASS(windFrom)}</dd></div>
-            <div><dt>Current</dt><dd className="num">{f2(curMs)} m/s to {COMPASS(curTo)}</dd></div>
-            <div><dt>Waves</dt><dd className="num">{f1(waveM)} m</dd></div>
-            <div><dt>SST</dt><dd className="num">{f1(sstC)} °C</dd></div>
-          </dl>
-        </section>
-        <section className={`dm-card fc-link fc-risk is-${d.risk.toLowerCase()}`} onClick={() => setPage('impact')}>
-          <header className="dm-head"><h3><AlertTriangle size={15} />Impact, 24 h</h3><ArrowRight size={14} /></header>
-          <b className="fc-risk-level">{d.risk} risk to shoreline</b>
-          <p>{d.firstShore !== undefined ? `${f1(d.bands.high + d.bands.medium)} km of coast reached; first at +${d.firstShore} h near ${d.towns.find((t) => t.first !== undefined)?.name ?? 'the nearest coast'}.` : `No coast reached. Nearest receptor ${d.receptors[0] ? `${d.receptors[0].name}, ${f1(d.receptors[0].reach)} km beyond the envelope` : 'outside 120 km'}.`}</p>
-        </section>
-      </div>
-      {!backward && <button type="button" className="fc-switch" onClick={() => setDirection('backward')}><Compass size={14} />Trace this slick backwards to its source region</button>}
+      <button type="button" className={`fc-impact is-${d.risk.toLowerCase()}`} onClick={() => setPage('impact')}>
+        <i />
+        <span><b>{d.risk} risk to shoreline · 24 h</b><small>{d.firstShore !== undefined ? `${f1(d.bands.high + d.bands.medium)} km of coast reached; first at +${d.firstShore} h near ${d.towns.find((t) => t.first !== undefined)?.name ?? 'the nearest coast'}.` : `No coast reached.${d.receptors[0] ? ` Nearest receptor: ${d.receptors[0].name}, ${d.receptors[0].reach < 0.5 ? 'at the edge of the envelope' : `${f1(d.receptors[0].reach)} km beyond the envelope`}.` : ''}`}</small></span>
+        <ArrowRight size={15} />
+      </button>
     </>
   );
 }
@@ -1192,7 +1224,7 @@ function VesselPane({ d, vessels, selected, setSelected, t0 }: { d: Derived; ves
       <section className="dm-card dm-hero">
         <div>
           <h2>Most likely sources</h2>
-          <p>The five vessels most likely to have caused this slick, of {d.total} on AIS. Ranked by the pipeline's score, how close each came to the backward-traced oil, time inside the source region, AIS silences and vessel type.</p>
+          <p>The five vessels most likely to have caused this slick, of {d.total} on AIS. Same attribution as Detection → Map: vessels are filtered by the release window and distance to the backward-traced oil, then scored on proximity, timing, heading, behaviour near the trace and vessel type.</p>
         </div>
         <Badge claim="reconstructed">Ranked</Badge>
       </section>
@@ -1204,12 +1236,12 @@ function VesselPane({ d, vessels, selected, setSelected, t0 }: { d: Derived; ves
       </section>
 
       <section className="dm-card">
-        <header className="dm-head"><h3><Target size={15} />Attribution probability</h3><span className="dm-meta">share among all {d.total} vessels</span></header>
+        <header className="dm-head"><h3><Target size={15} />Attribution probability</h3><span className="dm-meta">{d.traceReady ? `share among all ${d.total} vessels` : 'provisional · backward trace still running'}</span></header>
         <ol className="fc-prob">
           {d.top.map((r, i) => (
             <li key={r.v.id} aria-selected={r.v.id === focus?.v.id} onClick={() => setSelected(r.v.id === selected ? undefined : r.v.id)}>
               <b className="num">{i + 1}</b>
-              <span className="dm-vname"><i className={`dm-dot is-${tone(r.v)}`} /><b>{r.v.name}</b><small>{r.v.type} · {r.v.flag}</small></span>
+              <span className="fc-prob-name"><b><i className={`dm-dot is-${tone(r.v)}`} />{r.v.name}</b><small>{r.v.type} · {r.v.flag}</small></span>
               <span className="fc-prob-bar"><i style={{ transform: `scaleX(${r.prob / d.top[0].prob})` }} /></span>
               <b className="num">{Math.round(r.prob * 100)} %</b>
               <small className="num">{r.pass ? `${f1(r.pass.km)} km at ${signed(r.pass.h)}` : '—'}</small>

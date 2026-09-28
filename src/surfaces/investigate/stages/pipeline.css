@@ -1,0 +1,37 @@
+/* Pipeline run: a dialog over the workspace. */
+.pr-backdrop { position: fixed; inset: 0; z-index: var(--z-modal); display: grid; place-items: center; padding: var(--space-8); background: rgb(8 12 16 / 0.55); }
+.pr { display: flex; flex-direction: column; width: min(760px, 100%); max-height: calc(100vh - 4rem); overflow: hidden; border-radius: var(--radius-panel); background: var(--panel); box-shadow: 0 24px 60px rgb(0 0 0 / 0.35); }
+.pr-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-6); padding: var(--space-6) var(--space-7) var(--space-4); }
+.pr-head h2 { margin: 0; font-size: var(--text-lg); }
+.pr-head p { margin: 2px 0 0; color: var(--ink-muted); font-size: var(--text-xs); }
+.pr-actions { display: flex; gap: var(--space-3); }
+.pr-actions button, .pr-foot button { display: inline-flex; align-items: center; gap: var(--space-3); height: 32px; padding: 0 var(--space-5); border-radius: var(--radius-control); background: var(--panel-sunken); color: var(--ink); font: inherit; font-size: var(--text-xs); font-weight: 600; cursor: pointer; }
+.pr-actions button:disabled { opacity: 0.5; cursor: default; }
+.pr-close { width: 32px; padding: 0 !important; justify-content: center; }
+.pr-bar { height: 3px; background: var(--panel-sunken); }
+.pr-bar i { display: block; height: 100%; background: var(--accent); transform-origin: 0 50%; transition: transform 0.3s var(--ease-out); }
+.pr-stages { flex: 1; overflow-y: auto; margin: 0; padding: var(--space-4) var(--space-7); list-style: none; }
+.pr-stages li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--space-4); padding: var(--space-3) 0; border-bottom: 1px solid var(--line-soft); }
+.pr-stages li:last-child { border-bottom: 0; }
+.pr-icon { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--panel-sunken); color: var(--ink-muted); }
+.is-running .pr-icon { background: var(--accent-wash); color: var(--accent-ink); }
+.is-done .pr-icon { background: var(--clear-wash); color: var(--clear-ink); }
+.is-failed .pr-icon { background: var(--critical-wash); color: var(--critical-ink); }
+.is-queued { opacity: 0.55; }
+.pr-spin { animation: pr-spin 0.9s linear infinite; }
+@keyframes pr-spin { to { transform: rotate(360deg); } }
+.pr-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pr-title { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-sm); }
+.pr-title small { margin-left: auto; color: var(--ink-muted); font-size: var(--text-3xs); }
+.pr-main > small { color: var(--ink-muted); font-size: var(--text-2xs); }
+.pr-kind { padding: 0 6px; border-radius: var(--radius-chip); font-size: var(--text-3xs); font-style: normal; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.pr-kind.is-live { background: var(--clear-wash); color: var(--clear-ink); }
+.pr-kind.is-cached { background: var(--panel-sunken); color: var(--ink-muted); }
+.pr-prog { height: 4px; margin: 4px 0; border-radius: 2px; background: var(--panel-sunken); }
+.pr-prog i { display: block; height: 100%; border-radius: 2px; background: var(--accent); transform-origin: 0 50%; }
+.pr-out { margin: 2px 0 0; color: var(--ink); font-size: var(--text-xs); font-weight: 600; }
+.pr-log { margin: 2px 0 0; padding: 0; list-style: none; color: var(--ink-muted); font-size: var(--text-3xs); }
+.pr-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-7); border-top: 1px solid var(--line); font-size: var(--text-xs); }
+.pr-foot button { background: var(--accent-wash); color: var(--accent-ink); }
+.pr-note { margin: 0; padding: 0 var(--space-7) var(--space-5); color: var(--ink-muted); font-size: var(--text-3xs); }
+.pr-stages .pr-log li { display: block; padding: 0; border: 0; }

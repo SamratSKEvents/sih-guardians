@@ -315,7 +315,7 @@ export function Timeline({
           aria-valuenow={time}
           aria-valuetext={`${longDate.format(time)} ${clock(time)} UTC`}
         >
-          <span className="tl-mini-fill" style={{ width: `${percent}%` }} />
+          <span className="tl-mini-fill" style={{ transform: `scaleX(${percent / 100})` }} />
         </span>
       </footer>
     );

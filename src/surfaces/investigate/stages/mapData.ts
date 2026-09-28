@@ -38,6 +38,12 @@ export interface MapVessel {
   parts?: { proximity: number; temporality: number; parity: number };
   why?: string;
   limits?: string;
+  /** Set by the attribution (attribution.ts): share of blame, why it was filtered out, what it did. */
+  share?: number;
+  excluded?: string;
+  flags?: string[];
+  features?: Record<'proximity' | 'timing' | 'heading' | 'behaviour' | 'type', number>;
+  pass?: { h: number; km: number };
 }
 
 /* ------------------------------------------------------------ geometry */

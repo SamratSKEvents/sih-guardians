@@ -1,0 +1,402 @@
+{
+ "edge:oil_04471": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_04471.jpg",
+  "item": "S2B_MSIL2A_20260315T054639_R048_T42QWL_20260315T092334",
+  "platform": "Sentinel-2B",
+  "datetime": "2026-03-15T05:46:39.024000Z",
+  "offsetH": 23.6,
+  "cloud": 0.01,
+  "bbox": [
+   69.50256,
+   22.48618,
+   69.66083,
+   22.64445
+  ],
+  "found": 4,
+  "tiles": [
+   "S2B_MSIL2A_20260315T054639_R048_T42QWL_20260315T092334",
+   "S2B_MSIL2A_20260315T054639_R048_T42QWK_20260315T092334"
+  ]
+ },
+ "edge:oil_11208": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_11208.jpg",
+  "item": "S2B_MSIL2A_20260210T053849_R005_T42QZG_20260210T091916",
+  "platform": "Sentinel-2B",
+  "datetime": "2026-02-10T05:38:49.024000Z",
+  "offsetH": -41,
+  "cloud": 0,
+  "bbox": [
+   72.63126,
+   18.93048,
+   72.76945,
+   19.06867
+  ],
+  "found": 8,
+  "tiles": [
+   "S2B_MSIL2A_20260210T053849_R005_T43QBB_20260210T091916",
+   "S2B_MSIL2A_20260210T053849_R005_T43QBA_20260210T091916",
+   "S2B_MSIL2A_20260210T053849_R005_T42QZG_20260210T091916",
+   "S2B_MSIL2A_20260210T053849_R005_T42QZF_20260210T091916"
+  ]
+ },
+ "edge:oil_05958": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_05958.jpg",
+  "item": "S2C_MSIL2A_20260311T051651_R062_T43PEN_20260311T103414",
+  "platform": "Sentinel-2C",
+  "datetime": "2026-03-11T05:16:51.025000Z",
+  "offsetH": -42.4,
+  "cloud": 11.38,
+  "bbox": [
+   75.33048,
+   11.43082,
+   75.46951,
+   11.56985
+  ],
+  "found": 2,
+  "tiles": [
+   "S2C_MSIL2A_20260311T051651_R062_T43PEN_20260311T103414"
+  ]
+ },
+ "edge:oil_06540": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_06540.jpg",
+  "item": "S2B_MSIL2A_20260126T044959_R076_T45QUC_20260126T083358",
+  "platform": "Sentinel-2B",
+  "datetime": "2026-01-26T04:49:59.024000Z",
+  "offsetH": -18.5,
+  "cloud": 0.01,
+  "bbox": [
+   85.92858,
+   19.72756,
+   86.07302,
+   19.872
+  ],
+  "found": 16,
+  "tiles": [
+   "S2B_MSIL2A_20260126T044959_R076_T45QVC_20260126T083358",
+   "S2B_MSIL2A_20260126T044959_R076_T45QVB_20260126T083358",
+   "S2B_MSIL2A_20260126T044959_R076_T45QUC_20260126T083358",
+   "S2B_MSIL2A_20260126T044959_R076_T45QUB_20260126T083358"
+  ]
+ },
+ "edge:oil_06831": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_06831.jpg",
+  "item": "S2C_MSIL2A_20260209T051951_R062_T43PFL_20260209T102711",
+  "platform": "Sentinel-2C",
+  "datetime": "2026-02-09T05:19:51.025000Z",
+  "offsetH": -33.8,
+  "cloud": 24.2,
+  "bbox": [
+   75.93608,
+   9.73622,
+   76.06349,
+   9.86362
+  ],
+  "found": 8,
+  "tiles": [
+   "S2C_MSIL2A_20260209T051951_R062_T43PFL_20260209T102711"
+  ]
+ },
+ "edge:oil_08480": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_08480.jpg",
+  "item": "S2A_MSIL2A_20260212T044901_R033_T45QWD_20260212T092612",
+  "platform": "Sentinel-2A",
+  "datetime": "2026-02-12T04:49:01.024000Z",
+  "offsetH": -1.1,
+  "cloud": 0,
+  "bbox": [
+   87.72885,
+   21.43039,
+   87.86898,
+   21.57051
+  ],
+  "found": 3,
+  "tiles": [
+   "S2A_MSIL2A_20260212T044901_R033_T45QWD_20260212T092612"
+  ]
+ },
+ "edge:oil_08868": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_08868.jpg",
+  "item": "S2B_MSIL2A_20260220T053749_R005_T42QYD_20260220T092634",
+  "platform": "Sentinel-2B",
+  "datetime": "2026-02-20T05:37:49.024000Z",
+  "offsetH": -14.1,
+  "cloud": 0,
+  "bbox": [
+   71.48713,
+   16.44866,
+   71.62616,
+   16.58769
+  ],
+  "found": 2,
+  "tiles": [
+   "S2B_MSIL2A_20260220T053749_R005_T42QYD_20260220T092634"
+  ]
+ },
+ "edge:oil_09353": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_09353.jpg",
+  "item": "S2B_MSIL2A_20260314T043659_R033_T45QXC_20260314T082902",
+  "platform": "Sentinel-2B",
+  "datetime": "2026-03-14T04:36:59.024000Z",
+  "offsetH": 12.5,
+  "cloud": 3.12,
+  "bbox": [
+   88.19837,
+   20.6037,
+   88.3431,
+   20.74842
+  ],
+  "found": 6,
+  "tiles": [
+   "S2B_MSIL2A_20260314T043659_R033_T45QXD_20260314T082902",
+   "S2B_MSIL2A_20260314T043659_R033_T45QXC_20260314T082902"
+  ]
+ },
+ "edge:oil_09838": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_09838.jpg",
+  "item": "S2B_MSIL2A_20260207T052909_R105_T43PBT_20260207T092426",
+  "platform": "Sentinel-2B",
+  "datetime": "2026-02-07T05:29:09.024000Z",
+  "offsetH": -14.5,
+  "cloud": 0,
+  "bbox": [
+   72.86076,
+   15.22245,
+   73.02649,
+   15.38818
+  ],
+  "found": 4,
+  "tiles": [
+   "S2B_MSIL2A_20260207T052909_R105_T43PBT_20260207T092426",
+   "S2B_MSIL2A_20260207T052909_R105_T43PBS_20260207T092426"
+  ]
+ },
+ "edge:oil_10614": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_10614.jpg",
+  "item": "S2B_MSIL2A_20260302T053639_R005_T42QYG_20260302T093017",
+  "platform": "Sentinel-2B",
+  "datetime": "2026-03-02T05:36:39.024000Z",
+  "offsetH": -16.7,
+  "cloud": 0.01,
+  "bbox": [
+   71.03373,
+   19.04455,
+   71.17423,
+   19.18506
+  ],
+  "found": 2,
+  "tiles": [
+   "S2B_MSIL2A_20260302T053639_R005_T42QYG_20260302T093017"
+  ]
+ },
+ "cerulean:slick_9102": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/cerulean_slick_9102.jpg",
+  "item": "S2B_MSIL2A_20260315T054639_R048_T42QXH_20260315T092334",
+  "platform": "Sentinel-2B",
+  "datetime": "2026-03-15T05:46:39.024000Z",
+  "offsetH": 23.8,
+  "cloud": 0.01,
+  "bbox": [
+   70.62769,
+   20.55869,
+   70.83487,
+   20.76587
+  ],
+  "found": 4,
+  "tiles": [
+   "S2B_MSIL2A_20260315T054639_R048_T42QXJ_20260315T092334",
+   "S2B_MSIL2A_20260315T054639_R048_T42QXH_20260315T092334"
+  ]
+ },
+ "edge:oil_04502": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_04502.jpg",
+  "item": "S2B_MSIL2A_20260315T054639_R048_T42QWK_20260315T092334",
+  "platform": "Sentinel-2B",
+  "datetime": "2026-03-15T05:46:39.024000Z",
+  "offsetH": 49.6,
+  "cloud": 2.17,
+  "bbox": [
+   69.35818,
+   21.65847,
+   69.52385,
+   21.82413
+  ],
+  "found": 4,
+  "tiles": [
+   "S2B_MSIL2A_20260315T054639_R048_T42QWK_20260315T092334",
+   "S2B_MSIL2A_20260315T054639_R048_T42QWJ_20260315T092334"
+  ]
+ },
+ "edge:oil_04891": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_04891.jpg",
+  "item": "S2C_MSIL2A_20260202T053031_R105_T43QBU_20260202T084320",
+  "platform": "Sentinel-2C",
+  "datetime": "2026-02-02T05:30:31.025000Z",
+  "offsetH": -27.4,
+  "cloud": 0,
+  "bbox": [
+   73.17296,
+   17.09194,
+   73.30856,
+   17.22755
+  ],
+  "found": 8,
+  "tiles": [
+   "S2C_MSIL2A_20260202T053031_R105_T43QCV_20260202T084320",
+   "S2C_MSIL2A_20260202T053031_R105_T43QCU_20260202T084320",
+   "S2C_MSIL2A_20260202T053031_R105_T43QBV_20260202T084320",
+   "S2C_MSIL2A_20260202T053031_R105_T43QBU_20260202T084320"
+  ]
+ },
+ "edge:oil_05182": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_05182.jpg",
+  "item": "S2B_MSIL2A_20260118T053049_R105_T43PCT_20260118T073403",
+  "platform": "Sentinel-2B",
+  "datetime": "2026-01-18T05:30:49.024000Z",
+  "offsetH": 51.4,
+  "cloud": 0.64,
+  "bbox": [
+   73.56408,
+   15.6236,
+   73.73597,
+   15.7955
+  ],
+  "found": 2,
+  "tiles": [
+   "S2B_MSIL2A_20260118T053049_R105_T43PCT_20260118T073403"
+  ]
+ },
+ "edge:oil_05473": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_05473.jpg",
+  "item": "S2C_MSIL2A_20260220T044831_R076_T44QRF_20260220T091216",
+  "platform": "Sentinel-2C",
+  "datetime": "2026-02-20T04:48:31.025000Z",
+  "offsetH": 54.3,
+  "cloud": 0.01,
+  "bbox": [
+   83.96243,
+   18.1718,
+   84.09792,
+   18.30728
+  ],
+  "found": 2,
+  "tiles": [
+   "S2C_MSIL2A_20260220T044831_R076_T44QRF_20260220T091216"
+  ]
+ },
+ "edge:oil_05667": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_05667.jpg",
+  "item": "S2B_MSIL2A_20260224T051719_R062_T43PDQ_20260224T090846",
+  "platform": "Sentinel-2B",
+  "datetime": "2026-02-24T05:17:19.024000Z",
+  "offsetH": 9.5,
+  "cloud": 21.57,
+  "bbox": [
+   74.75466,
+   12.76491,
+   74.88552,
+   12.89577
+  ],
+  "found": 2,
+  "tiles": [
+   "S2B_MSIL2A_20260224T051719_R062_T43PDQ_20260224T090846"
+  ]
+ },
+ "edge:oil_06152": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_06152.jpg",
+  "item": "S2C_MSIL2A_20260211T060001_R091_T42QVK_20260211T083612",
+  "platform": "Sentinel-2C",
+  "datetime": "2026-02-11T06:00:01.025000Z",
+  "offsetH": 12.7,
+  "cloud": 0,
+  "bbox": [
+   69.02781,
+   22.42406,
+   69.16929,
+   22.56554
+  ],
+  "found": 16,
+  "tiles": [
+   "S2C_MSIL2A_20260211T060001_R091_T42QWL_20260211T083612",
+   "S2C_MSIL2A_20260211T060001_R091_T42QWK_20260211T083612",
+   "S2C_MSIL2A_20260211T060001_R091_T42QVL_20260211T083612",
+   "S2C_MSIL2A_20260211T060001_R091_T42QVK_20260211T083612"
+  ]
+ },
+ "edge:oil_07413": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_07413.jpg",
+  "item": "S2C_MSIL2A_20260214T042901_R133_T45QYE_20260214T080510",
+  "platform": "Sentinel-2C",
+  "datetime": "2026-02-14T04:29:01.025000Z",
+  "offsetH": -29.4,
+  "cloud": 0,
+  "bbox": [
+   89.0798,
+   21.6991,
+   89.22004,
+   21.83934
+  ],
+  "found": 6,
+  "tiles": [
+   "S2C_MSIL2A_20260214T042901_R133_T45QYE_20260214T080510"
+  ]
+ },
+ "edge:oil_07704": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_07704.jpg",
+  "item": "S2C_MSIL2A_20260211T041911_R090_T46QDH_20260211T075415",
+  "platform": "Sentinel-2C",
+  "datetime": "2026-02-11T04:19:11.025000Z",
+  "offsetH": 36.5,
+  "cloud": 0.53,
+  "bbox": [
+   92.40747,
+   20.50456,
+   92.57413,
+   20.67122
+  ],
+  "found": 2,
+  "tiles": [
+   "S2C_MSIL2A_20260211T041911_R090_T46QDH_20260211T075415"
+  ]
+ },
+ "edge:oil_08092": {
+  "status": "AVAILABLE",
+  "file": "/data/eo/edge_oil_08092.jpg",
+  "item": "S2B_MSIL2A_20260212T043809_R033_T45QWD_20260212T081425",
+  "platform": "Sentinel-2B",
+  "datetime": "2026-02-12T04:38:09.024000Z",
+  "offsetH": -19.8,
+  "cloud": 0,
+  "bbox": [
+   86.91103,
+   20.73021,
+   87.04963,
+   20.86881
+  ],
+  "found": 8,
+  "tiles": [
+   "S2B_MSIL2A_20260212T043809_R033_T45QWD_20260212T081425",
+   "S2B_MSIL2A_20260212T043809_R033_T45QWC_20260212T081425",
+   "S2B_MSIL2A_20260212T043809_R033_T45QVD_20260212T081425",
+   "S2B_MSIL2A_20260212T043809_R033_T45QVC_20260212T081425"
+  ]
+ }
+}

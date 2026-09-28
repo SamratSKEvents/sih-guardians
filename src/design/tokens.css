@@ -226,6 +226,12 @@
   --z-panel: 4;
   --z-popover: 8;
   --z-notice: 16;
+  /* Above Leaflet panes (400-700) and its controls (800-1000). */
+  --z-map-chrome: 600;
+  --z-map-float: 650;
+  --z-map-control: 800;
+  --z-map-grip: 900;
+  --z-modal: 5000;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -11,14 +11,17 @@ import { GlobeMaster } from './engine';
 import type { LonLat } from './engine';
 import { applyForcing, DISPLAY_SHEEN_M, release, solverFor } from './live';
 import { loadLandRings } from './land';
+import { cellRings } from './cells';
 import type { Forcing } from './forcing';
 
 export interface OutlineRequest { rings: LonLat[][]; volumeM3: number; forcing: Forcing; forwardH: number; backwardH: number }
-export interface OutlineStep { hour: number; hull: LonLat[]; centre: LonLat; areaKm2: number; afloat: number; evaporated: number; dispersed: number; stranded: number; released: number }
+export interface OutlineStep { hour: number; hull: LonLat[]; /** Every lobe of the oil, following the coast (hull is the largest). */ rings?: LonLat[][]; centre: LonLat; areaKm2: number; afloat: number; evaporated: number; dispersed: number; stranded: number; released: number }
 export interface CoastPoint { at: LonLat; hour: number | null }
 export type OutlineMessage =
   | { kind: 'step'; dir: 'forward' | 'backward'; step: OutlineStep }
   | { kind: 'coast'; points: CoastPoint[] }
+  /** Everywhere the oil reached over the whole run, as coast-following rings. */
+  | { kind: 'envelope'; rings: LonLat[][] }
   | { kind: 'done'; dir: 'forward' | 'backward' }
   | { kind: 'failed'; detail: string };
 
@@ -68,13 +71,16 @@ async function run(req: OutlineRequest, dir: 'forward' | 'backward', land: LonLa
   if (problem) { post({ kind: 'failed', detail: problem }); return; }
   const hours = dir === 'forward' ? req.forwardH : req.backwardH;
   let last: LonLat = req.rings[0][0];
+  const reached = new Set<string>();
   for (let h = 0; h <= hours; h++) {
     while (g.t < h * 3600 && !g.halted) g.step(Math.min(60, h * 3600 - g.t));
     const c = cells(g);
     const m = g.measure(DISPLAY_SHEEN_M);
     const b = g.budget();
     if (c.centre) last = c.centre;
-    post({ kind: 'step', dir, step: { hour: dir === 'forward' ? h : -h, hull: hull(c.pts), centre: last, areaKm2: m.areaM2 / 1e6, afloat: m.volume, evaporated: b.evaporated, dispersed: b.dispersed, stranded: b.stranded, released: b.released } });
+    for (const k of c.buckets) reached.add(k);
+    const rings = cellRings(c.buckets, CELL);
+    post({ kind: 'step', dir, step: { hour: dir === 'forward' ? h : -h, hull: rings[0] ?? hull(c.pts), rings, centre: last, areaKm2: m.areaM2 / 1e6, afloat: m.volume, evaporated: b.evaporated, dispersed: b.dispersed, stranded: b.stranded, released: b.released } });
     if (coast) for (const q of coast) {
       if (q.hour !== null) continue;
       const bx = Math.floor(q.at[0] / CELL), by = Math.floor(q.at[1] / CELL);
@@ -82,6 +88,7 @@ async function run(req: OutlineRequest, dir: 'forward' | 'backward', land: LonLa
     }
     await new Promise((r) => setTimeout(r));
   }
+  if (dir === 'forward') post({ kind: 'envelope', rings: cellRings(reached, CELL) });
   post({ kind: 'done', dir });
 }
 
@@ -100,7 +107,7 @@ self.onmessage = async (event: MessageEvent<OutlineRequest>) => {
   try {
     await run(req, 'forward', land, coast);
     post({ kind: 'coast', points: coast });
-    await run(req, 'backward', land, undefined);
+    if (req.backwardH > 0) await run(req, 'backward', land, undefined);
   } catch (error) {
     post({ kind: 'failed', detail: error instanceof Error ? error.message : String(error) });
   }

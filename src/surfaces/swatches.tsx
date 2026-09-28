@@ -34,6 +34,21 @@ export function LayerSwatch({ kind }: { kind: string }) {
       </svg>
     );
 
+  if (kind === 'heat')
+    return (
+      <svg {...box}>
+        <defs>
+          <radialGradient id="swatch-heat">
+            <stop offset="0" stopColor="#ff2814" />
+            <stop offset="0.4" stopColor="#ffdc00" />
+            <stop offset="0.75" stopColor="#00c8e6" />
+            <stop offset="1" stopColor="#1e3cc8" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        <ellipse cx="12" cy="8" rx="11" ry="7" fill="url(#swatch-heat)" />
+      </svg>
+    );
+
   if (kind === 'ais')
     return (
       <svg {...box}>

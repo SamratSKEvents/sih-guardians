@@ -10,7 +10,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEven
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
-  Anchor, ArrowDown, ChevronDown, Eye, ArrowLeft, ArrowUp, Compass, Crosshair, Factory, FileText, Flag, Gauge, Layers, Leaf, Maximize, Navigation,
+  AlertTriangle, Anchor, ArrowDown, ChevronDown, Eye, Filter, ArrowLeft, ArrowUp, Compass, Crosshair, Factory, FileText, Flag, Gauge, Layers, Leaf, Maximize, Navigation,
   Pause, Play, Radio, Ship, ShieldAlert, Target, Waves, Wind,
 } from 'lucide-react';
 import { Badge } from '../../../design/components';
@@ -25,6 +25,8 @@ import {
   ANCHORAGES, LANES, PROTECTED, SITES, bearingOf, carryToPass, closestApproach, depthAt, coastKm, fromBundle, generate, indexLand, kmBetween,
   move, soundings, vesselAt, type Kind, type Land, type MapVessel, type Pt,
 } from './mapData';
+import { card, hover } from './mapTip';
+import { FEATURE_LABEL, useAttribution, WEIGHTS, type Attribution, type Feature } from './attribution';
 import './scene.css';
 import './mapPage.css';
 
@@ -150,11 +152,13 @@ export function MapPage({ slick, incident, incidentId }: { slick: SlickFeature; 
   };
 
   // Derived per-vessel figures.
-  const rows = useMemo(() => (vessels ?? []).map((v) => {
+  // One attribution for every page: rank, score and filtering come from here.
+  const att = useAttribution(vessels, slick, incident, incidentId, centre);
+  const rows = useMemo(() => (att.vessels ?? []).map((v) => {
     const now = vesselAt(v, t);
     const cpa = closestApproach(v, centre);
     return { v, now, cpa, dist: kmBetween(now.at, centre) };
-  }), [vessels, t]);
+  }), [att.vessels, t]);
   const filtered = rows
     .filter(({ v, dist }) => filter === 'all' || (filter === 'tanker' ? v.kind === 'tanker' || v.kind === 'gas' : filter === 'cargo' ? ['container', 'bulk', 'cargo'].includes(v.kind) : filter === 'fishing' ? v.kind === 'fishing' : filter === 'gap' ? v.gaps.length > 0 : dist <= 10))
     .sort((a, b) => {
@@ -272,7 +276,7 @@ export function MapPage({ slick, incident, incidentId }: { slick: SlickFeature; 
         {sel ? (
           <VesselCard row={sel} centre={centre} t0={t0} onBack={() => setSelected(undefined)} done={done} setDone={setDone} />
         ) : (
-          <AreaSummary rows={rows} centre={centre} t={t} land={land} env={env} onSelect={setSelected} shown={shown} setShown={setShown} />
+          <AreaSummary rows={rows} centre={centre} t={t} land={land} env={env} onSelect={setSelected} shown={shown} setShown={setShown} att={att.result} t0={t0} />
         )}
       </aside>
     </div>
@@ -320,6 +324,7 @@ function MapCanvas({
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 17, opacity: 0.75, pane: 'overlayPane' }).addTo(m);
     L.control.zoom({ position: 'bottomright' }).addTo(m);
     L.control.scale({ position: 'bottomright', imperial: false }).addTo(m);
+    m.attributionControl.addAttribution('Coastline © OpenStreetMap contributors (ODbL)');
     m.setView(ll(centre), 11);
     m.on('mousemove', (e) => onHover([e.latlng.lng, e.latlng.lat]));
     m.on('mouseout', () => onHover(undefined));
@@ -357,13 +362,13 @@ function MapCanvas({
         L.polyline(lane.line.map(ll), { className: 'dm-lane-axis', dashArray: '10 8', interactive: false }).addTo(g);
       }
       for (const a of ANCHORAGES.filter((x) => near(x.at))) {
-        L.circle(ll(a.at), { radius: a.radiusKm * 1000, className: 'dm-anchorage', dashArray: '4 4', interactive: false }).addTo(g);
+        hover(L.circle(ll(a.at), { radius: a.radiusKm * 1000, className: 'dm-anchorage', dashArray: '4 4' }), () => card(a.name, 'Anchorage', [['Radius', `${a.radiusKm} km`], ['From slick', `${f1(kmBetween(a.at, centre))} km`]])).addTo(g);
         L.marker(ll(a.at), { icon: chip(`⚓ ${a.name}`, 'is-quiet'), interactive: false }).addTo(g);
       }
     }
     if (shown.protected) {
       for (const a of PROTECTED.filter((x) => near(x.at, 100))) {
-        L.circle(ll(a.at), { radius: a.radiusKm * 1000, className: 'dm-protected', interactive: false }).addTo(g);
+        hover(L.circle(ll(a.at), { radius: a.radiusKm * 1000, className: 'dm-protected' }), () => card(a.name, a.kind, [['Radius', `${a.radiusKm} km`], ['From slick', `${f1(Math.max(0, kmBetween(a.at, centre) - a.radiusKm))} km to edge`]])).addTo(g);
         L.marker(ll(move(a.at, 0, a.radiusKm * 0.6)), { icon: chip(`${a.name} · ${a.kind}`, 'is-clear'), interactive: false }).addTo(g);
       }
     }
@@ -397,14 +402,14 @@ function MapCanvas({
     if (shown.sites) {
       for (const site of SITES.filter((x) => near(x.at))) {
         L.circle(ll(site.at), { radius: 500, className: 'dm-safety', interactive: false }).addTo(g);
-        L.marker(ll(site.at), {
+        const mk = L.marker(ll(site.at), {
           icon: L.divIcon({ className: `dm-site is-${site.kind}`, html: site.kind === 'platform' ? '<svg viewBox="-8 -8 16 16"><rect x="-5" y="-5" width="10" height="10"/><path d="M-5,-5 L5,5 M5,-5 L-5,5"/></svg>' : '<svg viewBox="-8 -8 16 16"><circle r="5"/><circle r="1.6" class="c"/></svg>', iconSize: [16, 16], iconAnchor: [8, 8] }),
-          title: site.name,
-        }).bindTooltip(`<b>${site.name}</b> <i>${site.operator}</i>`, { direction: 'right', offset: [10, 0], className: 'dm-tip' }).addTo(g);
+        });
+        hover(mk, () => card(site.name, site.operator, [['Type', site.kind === 'spm' ? 'Single-point mooring' : site.kind === 'platform' ? 'Offshore platform' : 'Oil terminal'], ['From slick', `${f1(kmBetween(site.at, centre))} km`], ['Safety zone', '500 m']])).addTo(g);
       }
     }
     if (shown.slick && rings.length) {
-      L.polygon(rings.map((r) => r.map((q) => ll(q as Pt))), { className: 'dm-slick' }).addTo(g);
+      hover(L.polygon(rings.map((r) => r.map((q) => ll(q as Pt))), { className: 'dm-slick' }), () => card('Detected slick', 'SAR detection at T0', [['Parts', rings.length], ['Centre', `${centre[1].toFixed(3)}° N, ${centre[0].toFixed(3)}° E`]])).addTo(g);
       L.circleMarker(ll(centre), { radius: 3, className: 'dm-centre', interactive: false }).addTo(g);
     }
     if (shown.tracks) {
@@ -429,7 +434,7 @@ function MapCanvas({
       for (const r of [...rows].sort((a, b) => (a.v.rank ?? 99) - (b.v.rank ?? 99)).slice(0, shown.allcpa ? rows.length : 3)) {
         const target = nearestOnSlick(rings, r.cpa.at) ?? centre;
         L.polyline([ll(r.cpa.at), ll(target)], { className: 'dm-cpa', dashArray: '2 4', interactive: false }).addTo(g);
-        L.circleMarker(ll(r.cpa.at), { radius: 3, className: 'dm-cpa-dot', interactive: false }).addTo(g);
+        hover(L.circleMarker(ll(r.cpa.at), { radius: 5, className: 'dm-cpa-dot' }), () => card(`Closest approach · ${r.v.name}`, r.v.type, [['Distance', `${f1(r.cpa.km)} km`], ['When', hrs(r.cpa.t)], ['Rank', r.v.rank ? `#${r.v.rank}` : '—']])).addTo(g);
         if (r.v.rank === 1 || r.v.id === selected) L.marker(ll(r.cpa.at), { icon: chip(`CPA ${f1(r.cpa.km)} km`, 'is-warning is-mini'), interactive: false }).addTo(g);
       }
     }
@@ -449,6 +454,10 @@ function MapCanvas({
       const tn = tone(v, selected);
       const mk = L.marker(ll(r.now.at), { icon: shipIcon(v, tn), zIndexOffset: tn === 'selected' ? 1000 : v.rank ? 500 - v.rank : 0, title: v.name });
       mk.on('click', () => onSelect(v.id === selected ? undefined : v.id));
+      hover(mk, () => {
+        const gap = Math.round(v.gaps.reduce((s2, x) => s2 + x[1] - x[0], 0) * 60);
+        return card(v.name, `${v.type} · ${v.flag} · ${v.lengthM} m`, [['Rank', v.rank ? `#${v.rank} · score ${(v.score ?? 0).toFixed(3)}` : '—'], ['From slick', `${f1(r.dist)} km`], ['Closest approach', `${f1(r.cpa.km)} km at ${hrs(r.cpa.t)}`], ['Speed · course', `${f1(r.now.knots)} kn · ${r.now.heading.toFixed(0)}°`], ['AIS silence', gap ? `${gap} min` : 'none'], ['MMSI', v.mmsi]]);
+      });
       if ((v.rank && v.rank <= 3) || v.id === selected) {
         mk.bindTooltip(`<b>${v.name}</b> <i>${v.rank ? `#${v.rank} · ${(v.score ?? 0).toFixed(2)}` : v.type}</i>`, { permanent: true, direction: 'right', offset: [12, 0], className: `dm-tip is-${tn}` });
       }
@@ -517,7 +526,7 @@ function Tile({ label, value, unit, note, tone: tn }: { label: string; value: st
   );
 }
 
-function AreaSummary({ rows, centre, t, land, env, onSelect, shown, setShown }: { rows: Row[]; centre: Pt; t: number; land?: Land; env?: Env; onSelect: (id: string) => void; shown: Record<LayerKey, boolean>; setShown: (fn: (s: Record<LayerKey, boolean>) => Record<LayerKey, boolean>) => void }) {
+function AreaSummary({ rows, centre, t, land, env, onSelect, shown, setShown, att, t0 }: { rows: Row[]; centre: Pt; t: number; land?: Land; env?: Env; onSelect: (id: string) => void; shown: Record<LayerKey, boolean>; setShown: (fn: (s: Record<LayerKey, boolean>) => Record<LayerKey, boolean>) => void; att?: Attribution; t0: number }) {
   const [details, setDetails] = useState<Record<'sites' | 'areas' | 'conditions', boolean>>({ sites: false, areas: false, conditions: false });
   const within = rows.filter((r) => r.dist <= 20);
   const tankers = rows.filter((r) => r.v.kind === 'tanker' || r.v.kind === 'gas');
@@ -538,6 +547,8 @@ function AreaSummary({ rows, centre, t, land, env, onSelect, shown, setShown }: 
         </div>
         <Badge claim="observed">AIS</Badge>
       </section>
+
+      <Funnel att={att} rows={rows} onSelect={onSelect} t0={t0} />
 
       <section className="dm-card dm-options">
         <header className="dm-head"><h3><Eye size={15} />Show on map</h3><span className="dm-meta">off by default, to keep the chart readable</span></header>
@@ -640,6 +651,49 @@ function AreaSummary({ rows, centre, t, land, env, onSelect, shown, setShown }: 
         </dl>
       </section>
     </>
+  );
+}
+
+/** From every vessel on AIS to the ranked shortlist, with why each step removed who it did. */
+function Funnel({ att, rows, onSelect, t0 }: { att?: Attribution; rows: Row[]; onSelect: (id: string) => void; t0: number }) {
+  const [open, setOpen] = useState(false);
+  if (!att) return (
+    <section className="dm-card dm-funnel">
+      <header className="dm-head"><h3><Filter size={15} />Attribution funnel</h3></header>
+      <p className="dm-why">Tracing the oil back 24 h with 1,000 particles; vessels are ranked once the trace is complete (about 20 s).</p>
+    </section>
+  );
+  const max = att.funnel[0].kept || 1;
+  const excluded = rows.filter((r) => r.v.excluded);
+  return (
+    <section className="dm-card dm-funnel">
+      <header className="dm-head"><h3><Filter size={15} />Attribution funnel</h3><span className="dm-meta">release window {when.format(t0 + att.window[0] * 3_600_000).split(', ').at(-1)}–{when.format(t0 + att.window[1] * 3_600_000).split(', ').at(-1)} UTC{att.ready ? '' : ' · trace running'}</span></header>
+      <ol>
+        {att.funnel.map((f, i) => (
+          <li key={f.label}>
+            <span className="num">{i + 1}</span>
+            <div><b>{f.label}</b>{f.removed > 0 && <small>−{f.removed} {f.reason}</small>}</div>
+            <i><em style={{ width: `${(f.kept / max) * 100}%` }} /></i>
+            <b className="num">{f.kept}</b>
+          </li>
+        ))}
+      </ol>
+      <div className="dm-shortlist">
+        {att.ranked.slice(0, 5).map((s) => (
+          <button key={s.v.id} type="button" onClick={() => onSelect(s.v.id)}>
+            <b className="num">#{s.rank}</b><span>{s.v.name}<small>{s.flags[0] ?? s.v.type}</small></span><em className="num">{Math.round(s.share * 100)} %</em>
+          </button>
+        ))}
+      </div>
+      {excluded.length > 0 && (
+        <button type="button" className="dm-more" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? 'Hide' : 'Show'} the {excluded.length} filtered out</button>
+      )}
+      {open && (
+        <ul className="dm-list dm-excl">
+          {excluded.map((r) => <li key={r.v.id}><span><b>{r.v.name}</b><small>{r.v.type}</small></span><small>{r.v.excluded}</small></li>)}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -747,14 +801,18 @@ function VesselCard({ row, centre, t0, onBack, done, setDone }: { row: Row; cent
         <div className="dm-spark-axis"><span>{hrs(pts[0].t)}</span><span>{hrs(pts[pts.length - 1].t)}</span></div>
       </section>
 
-      {v.parts && (
+      {v.features && (
         <section className="dm-card">
-          <header className="dm-head"><h3><Target size={15} />Why it ranks here</h3><span className="dm-meta">0.60 proximity + 0.25 timing + 0.15 heading</span></header>
-          {([['Proximity', v.parts.proximity, 0.6], ['Timing', v.parts.temporality, 0.25], ['Heading fit', v.parts.parity, 0.15]] as const).map(([label, val, w]) => (
-            <div key={label} className="dm-bar"><span>{label}<small>weight {w}</small></span><i><em style={{ transform: `scaleX(${val})` }} /></i><b className="num">{val.toFixed(2)}</b><b className="num dm-contrib">+{(val * w).toFixed(3)}</b></div>
+          <header className="dm-head"><h3><Target size={15} />Why it ranks here</h3><span className="dm-meta">score {(v.score ?? 0).toFixed(3)} · {Math.round((v.share ?? 0) * 100)} % of attribution</span></header>
+          {(Object.keys(WEIGHTS) as Feature[]).map((k) => (
+            <div key={k} className="dm-bar"><span>{FEATURE_LABEL[k]}<small>weight {WEIGHTS[k]}</small></span><i><em style={{ transform: `scaleX(${v.features![k]})` }} /></i><b className="num">{v.features![k].toFixed(2)}</b><b className="num dm-contrib">+{(v.features![k] * WEIGHTS[k]).toFixed(3)}</b></div>
           ))}
-          {v.why && <p className="dm-why">{v.why}</p>}
+          {v.pass && <p className="dm-why">Closest to the backward-traced oil: {v.pass.km.toFixed(1)} km at {hrs(v.pass.h)}.</p>}
+          {!!v.flags?.length && <ul className="dm-flags">{v.flags.map((f) => <li key={f}><AlertTriangle size={12} />{f}</li>)}</ul>}
         </section>
+      )}
+      {v.excluded && (
+        <section className="dm-card dm-excluded"><header className="dm-head"><h3><Filter size={15} />Filtered out</h3></header><p className="dm-why">{v.excluded}. Not a candidate for this slick.</p></section>
       )}
 
       {v.gaps.length > 0 && (

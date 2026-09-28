@@ -21,12 +21,15 @@
  * close button removes it.
  */
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
 import { Moon, Sun, X } from 'lucide-react';
 import { useMode } from './design/useMode';
-import { SpillsSurface } from './surfaces/Spills';
-import { DashboardSurface } from './surfaces/Dashboard';
+// Loaded on first visit: the landing page never pays for the globe (Cesium) or the charts.
+const SpillsSurface = lazy(() => import('./surfaces/Spills').then((m) => ({ default: m.SpillsSurface })));
+const DemoTour = lazy(() => import('./surfaces/DemoTour').then((m) => ({ default: m.DemoTour })));
+const DashboardSurface = lazy(() => import('./surfaces/Dashboard').then((m) => ({ default: m.DashboardSurface })));
 import { Landing } from './surfaces/Landing';
+
 import { MAX_TABS, investigationTab, onInvestigate, type TabItem } from './surfaces/tabs';
 import './styles.css';
 
@@ -48,11 +51,12 @@ function useRoute() {
   );
   const id = hash.replace(/^#\/?/, '');
   // No hash at all is the front door; an unknown one still lands on Spills.
-  return { route: ROUTES.find((route) => route.id === id) ?? ROUTES[0], landing: id === '' };
+  // `#/demo` is Spills with the guided tour on top.
+  return { route: ROUTES.find((route) => route.id === id) ?? ROUTES[0], landing: id === '', demo: id === 'demo' };
 }
 
 export function App() {
-  const { route, landing } = useRoute();
+  const { route, landing, demo } = useRoute();
   const [tabs, setTabs] = useState<TabItem[]>([]);
   const [tabId, setTabId] = useState<string>();
   const [mode, setMode] = useMode();
@@ -87,10 +91,11 @@ export function App() {
     setTabId((current) => (current === id ? undefined : current));
   };
 
-  if (landing && !tab) return <Landing mode={mode} setMode={setMode} />;
+  if (landing && !tab) return <Landing />;
 
   return (
     <div className={`app theme-${mode}`}>
+      {demo && <Suspense fallback={null}><DemoTour onMap={() => setTabId(undefined)} onExit={() => { window.location.hash = '#/spills'; }} /></Suspense>}
       <header className="app-bar">
         <a className="app-mark" href="#/" onClick={() => setTabId(undefined)}>GUARDIANS</a>
 
@@ -148,7 +153,9 @@ export function App() {
         </button>
       </header>
 
-      <main className="app-stage">{tab ? tab.render() : route.render()}</main>
+      <main className="app-stage">
+        <Suspense fallback={<div className="app-loading" aria-busy="true">Loading…</div>}>{tab ? tab.render() : route.render()}</Suspense>
+      </main>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import {
   Color,
   ColorMaterialProperty,
   ConstantProperty,
+  DistanceDisplayCondition,
   JulianDate,
   NearFarScalar,
   PolylineDashMaterialProperty,
@@ -13,88 +14,15 @@ import {
   SampledPositionProperty,
 } from 'cesium';
 import type { MapLayerDefinition } from './types';
-
-interface AisPositionReport {
-  timestamp: string;
-  longitude: number;
-  latitude: number;
-  speedKnots: number;
-  courseDegrees: number;
-}
-
-interface DemoAisVessel {
-  mmsi: string;
-  name: string;
-  vesselType: 'Cargo' | 'Tanker' | 'Container';
-  reports: AisPositionReport[];
-}
-
-/* Invented names; no real vessel is intended. */
-const DEMO_NAMES = [
-  'SAGAR KANYA', 'OCEAN VEDA', 'KAVERI SPIRIT', 'MV TAPTI', 'JAL KIRAN', 'BLUE NILGIRI', 'SEA KONARK', 'MAHI EXPRESS',
-  'CORAL ANDAMAN', 'MV SABARMATI', 'INDUS STAR', 'GOLDEN KOCHI', 'VAIGAI', 'MALABAR PEARL', 'MV NARMADA', 'LAKSHADWEEP',
-  'ARABIAN TERN', 'BAY OF BENGAL',
-];
-
-function seeded(index: number) {
-  const value = Math.sin(index * 12.9898) * 43758.5453;
-  return value - Math.floor(value);
-}
-
-/** Deterministic random AIS reports, shaped like a real timestamped feed. */
-// 49 reports half an hour apart: one day of traffic for the timeline to scrub.
-const REPORT_INTERVAL_S = 30 * 60;
-const DEMO_START_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
-
-function createDemoAisTimeSeries(vesselCount = 18, reportCount = 49): DemoAisVessel[] {
-  return Array.from({ length: vesselCount }, (_, vesselIndex) => {
-    const originLongitude = 52 + seeded(vesselIndex + 2) * 42;
-    const originLatitude = -8 + seeded(vesselIndex + 31) * 26;
-    const courseRadians = seeded(vesselIndex + 67) * Math.PI * 2;
-    const speedKnots = 10 + seeded(vesselIndex + 103) * 11;
-    const reports = Array.from({ length: reportCount }, (_, reportIndex) => {
-      const distance = reportIndex * (0.06 + speedKnots * 0.0025);
-      const drift = Math.sin(reportIndex * 0.32 + vesselIndex) * 0.16;
-      const longitude = originLongitude + Math.cos(courseRadians) * distance - Math.sin(courseRadians) * drift;
-      const latitude = originLatitude + Math.sin(courseRadians) * distance + Math.cos(courseRadians) * drift;
-      return {
-        timestamp: new Date(DEMO_START_MS + reportIndex * REPORT_INTERVAL_S * 1000).toISOString(),
-        longitude,
-        latitude,
-        speedKnots: Number(speedKnots.toFixed(1)),
-        courseDegrees: (courseRadians * 180) / Math.PI,
-      };
-    });
-
-    return {
-      mmsi: String(636_000_000 + vesselIndex),
-      name: DEMO_NAMES[vesselIndex % DEMO_NAMES.length],
-      vesselType: (['Cargo', 'Tanker', 'Container'] as const)[vesselIndex % 3],
-      reports,
-    };
-  });
-}
-
-const AIS_DEMO_TIME_SERIES = createDemoAisTimeSeries();
-const ROUTE_SECONDS = (AIS_DEMO_TIME_SERIES[0].reports.length - 1) * REPORT_INTERVAL_S;
-
-const DAY_MS = 86_400_000;
+import { loadSlickVessels } from './slickVessels';
 
 /**
- * The demo traffic is one day of reports, replayed every day: any moment maps
- * onto the same time of day on that reference day. So the ships stay on the
- * map whatever window the timeline shows (the slick catalog spans ~20 months).
+ * Time span shown before the slick catalog's own window loads. Spills replaces
+ * it with the catalog's extent as soon as that resolves.
  */
-function onDemoDay(time: JulianDate, result: JulianDate): JulianDate {
-  const ms = JulianDate.toDate(time).getTime();
-  const offset = (((ms - DEMO_START_MS) % DAY_MS) + DAY_MS) % DAY_MS;
-  return JulianDate.fromDate(new Date(DEMO_START_MS + offset), result);
-}
-
-/** Time span the demo traffic covers; the timeline window until incident data sets one. */
 export const AIS_DEMO_WINDOW = {
-  start: DEMO_START_MS,
-  end: DEMO_START_MS + ROUTE_SECONDS * 1000,
+  start: Date.UTC(2026, 0, 16),
+  end: Date.UTC(2026, 2, 15),
 };
 
 const VESSEL_COLORS = [Color.CYAN, Color.ORANGE, Color.LIME];
@@ -114,104 +42,121 @@ function shipIcon(color: Color) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
+type Added = ReturnType<import('cesium').EntityCollection['add']>;
+
 export const aisDemoLayer = {
   id: 'ais-demo',
-  label: 'AIS demo vessels',
-  description: 'Synthetic ship traffic in the Indian Ocean: one day of AIS reports, replayed every day.',
-  value: 'demo',
+  label: 'AIS vessels',
+  description:
+    'Top suspect vessels for each of the 20 investigated slicks: real AIS for the Gulf of Kutch, the ' +
+    'investigation traffic picture elsewhere. A ship moves along its reports and waits at either end outside them.',
+  value: 'slicks',
   swatch: 'ais',
   defaultVisible: true,
   create: ({ viewer }) => {
-    const first = JulianDate.fromIso8601(AIS_DEMO_TIME_SERIES[0].reports[0].timestamp);
-    const scratch = new JulianDate();
-    const tracks: { entity: ReturnType<typeof viewer.entities.add>; solid: ColorMaterialProperty; dash: PolylineDashMaterialProperty; focus: PolylineGlowMaterialProperty; fadedSolid: ColorMaterialProperty; fadedDash: PolylineDashMaterialProperty }[] = [];
+    const tracks: { entity: Added; solid: ColorMaterialProperty; dash: PolylineDashMaterialProperty; focus: PolylineGlowMaterialProperty; fadedSolid: ColorMaterialProperty; fadedDash: PolylineDashMaterialProperty }[] = [];
+    const entities: Added[] = [];
     const haloNormal = new Cartesian3();
     const haloOffset = new Cartesian3();
-    const entities = AIS_DEMO_TIME_SERIES.map((vessel, index) => {
-      const sampledRoute = new SampledPositionProperty();
-      const sampledShip = new SampledPositionProperty();
-      for (const report of vessel.reports) {
-        const time = JulianDate.fromIso8601(report.timestamp);
-        sampledRoute.addSample(time, Cartesian3.fromDegrees(report.longitude, report.latitude, 30));
-        // Keep the visual marker just above its route to avoid depth-buffer fighting.
-        sampledShip.addSample(time, Cartesian3.fromDegrees(report.longitude, report.latitude, 300));
+    const scratch = new JulianDate();
+    let destroyed = false;
+    let visible = true;
+    let focusedEntityId: string | undefined;
+
+    let styleKey = '';
+    const updateTrackStyle = () => {
+      const zoomedOut = viewer.camera.positionCartographic.height > 3_500_000;
+      // camera.changed fires on every pan; new properties force Cesium to rebuild paths.
+      if (`${zoomedOut}|${focusedEntityId}|${tracks.length}` === styleKey) return;
+      styleKey = `${zoomedOut}|${focusedEntityId}|${tracks.length}`;
+      const focusedMmsi = focusedEntityId?.split('-').at(-1);
+      for (const track of tracks) {
+        const isFocused = Boolean(focusedMmsi && track.entity.id.endsWith(focusedMmsi));
+        const faded = Boolean(focusedEntityId && !isFocused);
+        if (!track.entity.polyline) continue;
+        track.entity.polyline.width = new ConstantProperty(isFocused ? AIS_FOCUS_STYLE.selectedPathWidth : AIS_FOCUS_STYLE.normalPathWidth);
+        track.entity.polyline.material = isFocused
+          ? track.focus
+          : zoomedOut ? (faded ? track.fadedSolid : track.solid) : (faded ? track.fadedDash : track.dash);
       }
-      const position = new CallbackPositionProperty(
-        (time, result) => sampledRoute.getValue(onDemoDay(time ?? first, scratch), result),
-        false,
-      );
-      const shipPosition = new CallbackPositionProperty(
-        (time, result) => sampledShip.getValue(onDemoDay(time ?? first, scratch), result),
-        false,
-      );
-      const color = VESSEL_COLORS[index % VESSEL_COLORS.length];
-      const courseAt = (time: JulianDate) => {
-        const seconds = Math.max(0, JulianDate.secondsDifference(onDemoDay(time, scratch), first));
-        const reportIndex = Math.min(vessel.reports.length - 2, Math.floor(seconds / REPORT_INTERVAL_S));
-        const here = vessel.reports[reportIndex];
-        const next = vessel.reports[reportIndex + 1];
-        const east = (next.longitude - here.longitude) * Math.cos((here.latitude * Math.PI) / 180);
-        return Math.atan2(next.latitude - here.latitude, east);
-      };
-      const solid = new ColorMaterialProperty(TRACK_COLOR.withAlpha(0.82));
-      const dash = new PolylineDashMaterialProperty({
-        color: TRACK_COLOR.withAlpha(0.92),
-        dashLength: 10,
+      viewer.scene.requestRender();
+    };
+
+    loadSlickVessels().then((list) => {
+      if (destroyed) return;
+      list.forEach(({ vessel, track, slickId }, index) => {
+        const start = JulianDate.fromDate(new Date(track[0][0]));
+        const end = JulianDate.fromDate(new Date(track[track.length - 1][0]));
+        const sampled = new SampledPositionProperty();
+        for (const [ms, lon, lat] of track) sampled.addSample(JulianDate.fromDate(new Date(ms)), Cartesian3.fromDegrees(lon, lat, 300));
+        // Before its reports the ship is at the first one, after them at the last.
+        const clamp = (time: JulianDate | undefined) =>
+          !time || JulianDate.lessThan(time, start) ? start : JulianDate.greaterThan(time, end) ? end : JulianDate.clone(time, scratch);
+        const courseAt = (time: JulianDate | undefined) => {
+          const ms = JulianDate.toDate(clamp(time)).getTime();
+          let k = track.findIndex((p) => p[0] > ms);
+          if (k <= 0) k = k === 0 ? 1 : track.length - 1;
+          const [, x0, y0] = track[k - 1];
+          const [, x1, y1] = track[k];
+          return Math.atan2(y1 - y0, (x1 - x0) * Math.cos((y0 * Math.PI) / 180));
+        };
+        const hours = (track[track.length - 1][0] - track[0][0]) / 3_600_000;
+        const properties = {
+          mmsi: vessel.mmsi,
+          vesselType: `${vessel.type} · suspect #${vessel.rank} for ${slickId.split(':').at(-1)}`,
+          reports: track.length,
+          routeDuration: `${hours.toFixed(1)} h`,
+          routePositions: track.map(([, longitude, latitude]) => ({ longitude, latitude })),
+        };
+        const path = viewer.entities.add({
+          id: `ais-path-${vessel.mmsi}`,
+          name: `${vessel.name} route`,
+          show: visible,
+          polyline: {
+            positions: track.map(([, lon, lat]) => Cartesian3.fromDegrees(lon, lat, 30)),
+            material: new ColorMaterialProperty(TRACK_COLOR.withAlpha(0.82)),
+            width: AIS_FOCUS_STYLE.normalPathWidth,
+          },
+          properties,
+        });
+        entities.push(viewer.entities.add({
+          id: `ais-ship-${vessel.mmsi}`,
+          name: vessel.name,
+          show: visible,
+          position: new CallbackPositionProperty((time, result) => sampled.getValue(clamp(time), result), false),
+          billboard: {
+            image: shipIcon(VESSEL_COLORS[index % VESSEL_COLORS.length]),
+            width: 30,
+            height: 30,
+            // Course is counter-clockwise from east; the icon points north.
+            rotation: new CallbackProperty((time) => courseAt(time) - Math.PI / 2, false),
+            scaleByDistance: new NearFarScalar(200_000, 1, 12_000_000, 0.5),
+          },
+          label: {
+            text: vessel.name,
+            fillColor: Color.WHITE,
+            outlineColor: Color.BLACK,
+            outlineWidth: 2,
+            font: '11px sans-serif',
+            pixelOffset: new Cartesian2(18, -14),
+            showBackground: true,
+            backgroundColor: Color.BLACK.withAlpha(0.78),
+            backgroundPadding: new Cartesian2(5, 3),
+            // Names only once zoomed in: a hundred labels at world view is noise.
+            distanceDisplayCondition: new DistanceDisplayCondition(0, 1_500_000),
+          },
+          properties,
+        }));
+        tracks.push({
+          entity: path,
+          solid: new ColorMaterialProperty(TRACK_COLOR.withAlpha(0.82)),
+          dash: new PolylineDashMaterialProperty({ color: TRACK_COLOR.withAlpha(0.92), dashLength: 10 }),
+          fadedSolid: new ColorMaterialProperty(TRACK_COLOR.withAlpha(0.1)),
+          fadedDash: new PolylineDashMaterialProperty({ color: TRACK_COLOR.withAlpha(0.12), dashLength: 10 }),
+          focus: new PolylineGlowMaterialProperty({ color: AIS_FOCUS_STYLE.selectedPathColor, glowPower: 0.22 }),
+        });
       });
-      const fadedSolid = new ColorMaterialProperty(TRACK_COLOR.withAlpha(0.1));
-      const fadedDash = new PolylineDashMaterialProperty({ color: TRACK_COLOR.withAlpha(0.12), dashLength: 10 });
-      const focus = new PolylineGlowMaterialProperty({
-        color: AIS_FOCUS_STYLE.selectedPathColor,
-        glowPower: 0.22,
-      });
-      const properties = {
-        mmsi: vessel.mmsi,
-        vesselType: vessel.vesselType,
-        reports: vessel.reports.length,
-        routeDuration: `${((vessel.reports.length - 1) * REPORT_INTERVAL_S) / 3600} h`,
-        routePositions: vessel.reports.map(({ longitude, latitude }) => ({ longitude, latitude })),
-      };
-      const pathEntity = viewer.entities.add({
-        id: `ais-path-${vessel.mmsi}`,
-        name: `${vessel.name} route`,
-        position,
-        // The whole day's route as a fixed line: a trail sampled around the
-        // current time would jump across the map at the midnight wrap.
-        polyline: {
-          positions: vessel.reports.map((report) => Cartesian3.fromDegrees(report.longitude, report.latitude, 30)),
-          material: solid,
-          width: AIS_FOCUS_STYLE.normalPathWidth,
-        },
-        properties,
-      });
-      const entity = viewer.entities.add({
-        id: `ais-ship-${vessel.mmsi}`,
-        name: vessel.name,
-        position: shipPosition,
-        billboard: {
-          image: shipIcon(color),
-          width: 38,
-          height: 38,
-          // Route angles are measured counter-clockwise from east; this icon points north.
-          rotation: new CallbackProperty((time) => courseAt(time ?? first) - Math.PI / 2, false),
-          scaleByDistance: new NearFarScalar(500_000, 1, 18_000_000, 0.65),
-        },
-        label: {
-          text: vessel.name,
-          fillColor: Color.WHITE,
-          outlineColor: Color.BLACK,
-          outlineWidth: 2,
-          font: '11px sans-serif',
-          pixelOffset: new Cartesian2(22, -18),
-          showBackground: true,
-          backgroundColor: Color.BLACK.withAlpha(0.78),
-          backgroundPadding: new Cartesian2(5, 3),
-          scaleByDistance: new NearFarScalar(500_000, 1, 18_000_000, 0.65),
-        },
-        properties,
-      });
-      tracks.push({ entity: pathEntity, solid, dash, focus, fadedSolid, fadedDash });
-      return entity;
+      updateTrackStyle();
     });
 
     const focusHalo = viewer.entities.add({
@@ -224,36 +169,9 @@ export const aisDemoLayer = {
         outlineWidth: 2,
       },
     });
-    let focusedEntityId: string | undefined;
 
-    let styleKey = '';
-    const updateTrackStyle = () => {
-      const zoomedOut = viewer.camera.positionCartographic.height > 3_500_000;
-      // camera.changed fires on every pan; new properties force Cesium to rebuild paths.
-      if (`${zoomedOut}|${focusedEntityId}` === styleKey) return;
-      styleKey = `${zoomedOut}|${focusedEntityId}`;
-      for (const track of tracks) {
-        const focusedMmsi = focusedEntityId?.split('-').at(-1);
-        const isFocused = Boolean(focusedMmsi && track.entity.id.endsWith(focusedMmsi));
-        const faded = Boolean(focusedEntityId && !isFocused);
-        if (track.entity.polyline) {
-          track.entity.polyline.width = new ConstantProperty(
-            isFocused
-              ? AIS_FOCUS_STYLE.selectedPathWidth
-              : AIS_FOCUS_STYLE.normalPathWidth,
-          );
-          track.entity.polyline.material = isFocused
-            ? track.focus
-            : zoomedOut ? (faded ? track.fadedSolid : track.solid) : (faded ? track.fadedDash : track.dash);
-        }
-      }
-      viewer.scene.requestRender();
-    };
     updateTrackStyle();
     viewer.camera.changed.addEventListener(updateTrackStyle);
-
-    // Time is owned by the app timeline, which sets viewer.clock.currentTime.
-    let visible = true;
 
     return {
       setVisible(show) {
@@ -265,19 +183,12 @@ export const aisDemoLayer = {
       setFocus(entityId) {
         // Focus is shared with other layers (e.g. a selected slick): only ours counts here.
         focusedEntityId = entityId?.startsWith('ais-') ? entityId : undefined;
-        entityId = focusedEntityId;
-        const focusedMmsi = entityId?.split('-').at(-1);
+        const focusedMmsi = focusedEntityId?.split('-').at(-1);
         const focused = entities.find((entity) => focusedMmsi && entity.id.endsWith(focusedMmsi));
         for (const entity of entities) {
-          const isFocused = entity === focused;
-          if (entity.billboard) {
-            entity.billboard.color = new ConstantProperty(
-              isFocused || !focused ? Color.WHITE : Color.WHITE.withAlpha(0.16),
-            );
-          }
-          if (entity.label) {
-            entity.label.fillColor = new ConstantProperty(isFocused || !focused ? Color.WHITE : Color.WHITE.withAlpha(0.16));
-          }
+          const tint = entity === focused || !focused ? Color.WHITE : Color.WHITE.withAlpha(0.16);
+          if (entity.billboard) entity.billboard.color = new ConstantProperty(tint);
+          if (entity.label) entity.label.fillColor = new ConstantProperty(tint);
         }
         focusHalo.position = focused?.position && new CallbackPositionProperty((time, result) => {
           const currentPosition = focused.position?.getValue(time);
@@ -290,6 +201,7 @@ export const aisDemoLayer = {
         updateTrackStyle();
       },
       destroy() {
+        destroyed = true;
         viewer.camera.changed.removeEventListener(updateTrackStyle);
         for (const entity of entities) viewer.entities.remove(entity);
         for (const track of tracks) viewer.entities.remove(track.entity);

@@ -1,0 +1,61 @@
+/*
+ * Guided demo. driver.js supplies the spotlight and positions the popover;
+ * everything inside is the design system's (tokens, Button, IconButton). The
+ * popover carries the app's theme class, so these tokens resolve per theme.
+ * A literal colour below is a bug, except the overlay dim, which driver
+ * paints itself (DemoTour.tsx).
+ */
+
+.driver-popover.gt-pop {
+  width: 360px;
+  max-width: calc(100vw - 2 * var(--space-6));
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--panel-raised);
+  box-shadow: var(--shadow-pop);
+  color: var(--ink);
+  font-family: inherit;
+}
+/* driver's own header and footer are replaced by the card. */
+.gt-pop .driver-popover-title,
+.gt-pop .driver-popover-description,
+.gt-pop .driver-popover-footer,
+.gt-pop .driver-popover-close-btn { display: none !important; }
+
+.gt-pop .driver-popover-arrow-side-left { border-left-color: var(--panel-raised); }
+.gt-pop .driver-popover-arrow-side-right { border-right-color: var(--panel-raised); }
+.gt-pop .driver-popover-arrow-side-top { border-top-color: var(--panel-raised); }
+.gt-pop .driver-popover-arrow-side-bottom { border-bottom-color: var(--panel-raised); }
+
+.gt-card { padding: var(--space-5) var(--space-6) var(--space-6); }
+
+/* Progress: one pip per step; the current pip fills, and is the timer. */
+.gt-pips { display: flex; gap: 2px; margin-bottom: var(--space-5); }
+.gt-pips > span { position: relative; flex: 1; height: 2px; overflow: hidden; border-radius: 1px; background: var(--line); }
+.gt-pips > span.is-done { background: var(--ink); }
+.gt-pips i {
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  transform-origin: left;
+  animation: gt-fill linear both;
+}
+.gt-card[data-paused] .gt-pips i,
+.gt-pop:hover .gt-pips i { animation-play-state: paused; }
+@keyframes gt-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+.gt-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2); }
+.gt-step { color: var(--ink-faint); font-size: var(--text-2xs); }
+.gt-title { margin: 0 0 var(--space-3); color: var(--ink); font-size: var(--text-md); font-weight: 600; line-height: 1.25; }
+.gt-body { margin: 0; color: var(--ink-secondary); font-size: var(--text-xs); line-height: 1.65; text-wrap: pretty; }
+
+.gt-controls { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-6); }
+.gt-controls .gt-pause { margin-right: auto; }
+
+/* The spotlight's edge, in the accent: where to look. */
+.driver-active-element { outline: 2px solid var(--accent-bright); outline-offset: 8px; border-radius: var(--radius-control); }
+
+@media (prefers-reduced-motion: reduce) {
+  .gt-pips i { animation-duration: 1ms !important; animation-play-state: paused !important; transform: scaleX(1); }
+}

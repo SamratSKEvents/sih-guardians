@@ -14,11 +14,11 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
-  Activity, Check, CircleAlert, Columns2, Crosshair, Eye, Layers, Maximize, Minus, Plus, Radar, Ruler, ScanSearch, Target, X,
+  Activity, Check, Clock, CircleAlert, Columns2, Crosshair, Eye, Layers, Maximize, Minus, Plus, Radar, Ruler, ScanSearch, Target, X,
 } from 'lucide-react';
 import { Badge } from '../../../design/components';
 import type { SlickFeature } from '../../../api/slicks';
-import type { Detection, Incident, SarImagery } from '../../../incidents/types';
+import type { Detection, Environment, Incident, SarImagery } from '../../../incidents/types';
 import { fetchDetection } from '../../../api/incidents';
 import { fetchScene } from '../../../api/scenes';
 import { useArtifact } from '../../../incidents/useArtifact';
@@ -26,6 +26,10 @@ import { GEOMETRY_LABEL, say } from '../../../incidents/words';
 import { VERIFIER, km, km2, latLon, when } from '../../../format';
 import { principalAxis, ringsOf } from '../geometry';
 import { mockSarImage } from './Detection';
+import { estimateAge, type AgeEstimate } from '../../../forecast/age';
+import { fromEnvironment } from '../../../forecast/forcing';
+import { fetchEnvironment } from '../../../api/incidents';
+import { baseProductContext } from './ForecastPage';
 import './scene.css';
 
 type LayerId = 'sar' | 'probability' | 'polygon' | 'mask' | 'truth';
@@ -133,6 +137,69 @@ function synthProbability(rings: number[][][], extent: Extent, size = 512, blur 
 
 /* ------------------------------------------------------------------ view */
 
+interface EoEntry { status: 'AVAILABLE' | 'NONE'; file?: string; item?: string; platform?: string; datetime?: string; offsetH?: number; cloud?: number; bbox?: [number, number, number, number]; found?: number; tiles?: string[]; searched?: string; maxCloud?: number }
+let eoIndex: Promise<Record<string, EoEntry>> | undefined;
+
+/** Sentinel-2 true colour nearest the SAR pass, with the SAR outline drawn on it (tools/eo/fetch_eo.py). */
+function OpticalCheck({ slickId, rings, obsAt }: { slickId: string; rings: number[][][]; obsAt: number }) {
+  const [e, setE] = useState<EoEntry | null>();
+  useEffect(() => {
+    eoIndex ??= fetch('/data/eo/index.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+    let live = true;
+    eoIndex.then((ix) => live && setE(ix[slickId] ?? null));
+    return () => void (live = false);
+  }, [slickId]);
+  if (e === undefined) return null;
+  const b = e?.bbox;
+  const path = b ? rings.map((r) => r.map(([x, y], i) => `${i ? 'L' : 'M'}${(((x - b[0]) / (b[2] - b[0])) * 1000).toFixed(1)},${(((b[3] - y) / (b[3] - b[1])) * 1000).toFixed(1)}`).join('') + 'Z').join('') : '';
+  const off = e?.offsetH ?? 0;
+  return (
+    <section className="sc-card sc-eo">
+      <header className="sc-head">
+        <h3><Eye size={15} />Optical cross-check</h3>
+        <span className="sc-meta">Sentinel-2 true colour</span>
+      </header>
+      {e?.status === 'AVAILABLE' && e.file && b ? (
+        <div className="sc-eo-body">
+          <figure>
+            <img src={e.file} alt={`Sentinel-2 true colour, ${e.datetime}`} />
+            <svg viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true"><path d={path} /></svg>
+            <figcaption>SAR outline over the optical pass</figcaption>
+          </figure>
+          <dl className="sc-rows">
+            <div><dt>Pass</dt><dd className="num">{when.format(Date.parse(e.datetime!))} UTC</dd></div>
+            <div><dt>From the SAR pass</dt><dd className="num">{off >= 0 ? '+' : '−'}{Math.abs(off).toFixed(1)} h {Math.abs(off) > 12 ? <small>oil will have moved; compare shape, not position</small> : <small>close in time</small>}</dd></div>
+            <div><dt>Cloud</dt><dd className="num">{e.cloud?.toFixed(1)} % of the tile</dd></div>
+            <div><dt>Platform</dt><dd>{e.platform?.replace('Sentinel-', 'Sentinel-')} · {e.tiles?.length ?? 1} tile{(e.tiles?.length ?? 1) > 1 ? 's' : ''} merged</dd></div>
+            <div><dt>Scene</dt><dd className="mono sc-eo-id">{e.item}</dd></div>
+            <div><dt>Passes searched</dt><dd className="num">{e.found} within ±5 days</dd></div>
+          </dl>
+          <p className="sc-note">Optical imagery confirms what SAR cannot: sheen colour, sediment plumes and algal blooms that mimic oil in radar. Thin sheen is often invisible in true colour, so no visible slick is not evidence of no oil.</p>
+        </div>
+      ) : (
+        <p className="sc-note">No Sentinel-2 pass under {e?.maxCloud ?? 40} % cloud within ±5 days{e?.found ? ` (${e.found} passes, all cloudy)` : ''}. The detection rests on SAR alone.</p>
+      )}
+    </section>
+  );
+}
+
+/** The two methods' ranges and the combined band, on one 0–48 h axis. */
+function AgeBar({ age }: { age: AgeEstimate }) {
+  const max = Math.max(24, Math.ceil(Math.max(age.fay[1], age.lehr[1]) / 6) * 6);
+  const x = (h: number) => `${(Math.min(h, max) / max) * 100}%`;
+  const bar = (r: [number, number], cls: string, label: string) => (
+    <div className="sc-agebar-row"><span>{label}</span><div><i className={cls} style={{ left: x(r[0]), width: `calc(${x(r[1])} - ${x(r[0])})` }} /></div></div>
+  );
+  return (
+    <div className="sc-agebar">
+      {bar(age.fay, 'is-fay', 'Fay')}
+      {bar(age.lehr, 'is-lehr', 'Lehr')}
+      {bar([age.lowH, age.highH], 'is-band', 'Estimate')}
+      <div className="sc-agebar-axis num"><span /><div>{Array.from({ length: max / 6 + 1 }, (_, k) => <em key={k} style={{ left: x(k * 6) }}>{k * 6} h</em>)}</div></div>
+    </div>
+  );
+}
+
 export function SceneView({ slick, incident, incidentId }: { slick: SlickFeature; incident: Incident | undefined; incidentId: string | undefined }) {
   const artifact = useArtifact<Detection>(incidentId, fetchDetection);
   const detection = artifact && artifact !== 'error' ? (artifact as RichDetection) : undefined;
@@ -143,6 +210,12 @@ export function SceneView({ slick, incident, incidentId }: { slick: SlickFeature
 
   const p = slick.properties;
   const rings = ringsOf(slick.geometry);
+  // Wind at the pass: the bundle's when it has one, else the slick's own scenario value.
+  const envArtifact = useArtifact<Environment>(incidentId, fetchEnvironment);
+  const centreLL = Array.isArray(p.centroid) ? { lon: Number(p.centroid[0]), lat: Number(p.centroid[1]) } : incident?.centre ?? { lon: 0, lat: 0 };
+  const obsAt = incident?.acquisitionTime ? Date.parse(incident.acquisitionTime) : Date.parse(String(p.observedAt));
+  const windMs = fromEnvironment(envArtifact && envArtifact !== 'error' ? envArtifact : undefined, centreLL, obsAt)?.windSpeed ?? baseProductContext(slick, incident).windSpeedMs;
+  const age = useMemo(() => estimateAge({ areaM2: Number(p.areaM2) || 0, windMs }), [p.areaM2, windMs]);
   const mock = useMemo(() => mockSarImage(slick.id, rings), [slick.id]);
   const extent: Extent | undefined = sar?.bounds ?? mock?.extent;
   const sarUrl = sar?.url ?? mock?.url;
@@ -290,6 +363,28 @@ export function SceneView({ slick, incident, incidentId }: { slick: SlickFeature
           <Tile label="Perimeter" value={main.perimeterM ? km(main.perimeterM) : '—'} note="largest part" />
           <Tile label="Mean P" value={probability.toFixed(3)} note="inside outline" tone={probability >= 0.7 ? 'clear' : 'warning'} />
           <Tile label="P95" value={p95.toFixed(3)} note="95th percentile" tone={p95 >= 0.7 ? 'clear' : 'warning'} />
+        </section>
+
+
+        <OpticalCheck slickId={slick.id} rings={rings} obsAt={obsAt} />
+
+        {/* Age */}
+        <section className="sc-card sc-age">
+          <header className="sc-head">
+            <h3><Clock size={15} />Estimated age</h3>
+            <span className="sc-meta">from how far the oil has spread</span>
+          </header>
+          <div className="sc-age-main">
+            <b className="num">{age.lowH.toFixed(0)}–{age.highH.toFixed(0)} h</b>
+            <span>released about <b className="num">{age.bestH.toFixed(0)} h</b> before the pass, between {when.format(obsAt - age.highH * 3_600_000)} and {when.format(obsAt - age.lowH * 3_600_000)} UTC</span>
+          </div>
+          <AgeBar age={age} />
+          <dl className="sc-rows">
+            <div><dt>Fay, surface tension</dt><dd className="num">{age.fay[0].toFixed(1)}–{age.fay[1].toFixed(1)} h <small>volume-free; ignores wind, so an upper bound</small></dd></div>
+            <div><dt>Lehr et al., wind-assisted</dt><dd className="num">{age.lehr[0].toFixed(1)}–{age.lehr[1].toFixed(1)} h <small>{windMs.toFixed(1)} m/s wind, 10–100 µm mean thickness</small></dd></div>
+            <div><dt>Agreement</dt><dd>{age.agree ? 'The two laws overlap; the band is their overlap.' : 'The laws do not overlap; the band spans the gap between them.'}</dd></div>
+          </dl>
+          <p className="sc-note">The backward trace on Forecast & impact runs to this age to place the origin, and vessels that passed inside this window rank higher.</p>
         </section>
 
         <div className="sc-grid">
@@ -490,7 +585,7 @@ function SceneImage({
       </svg>
     );
     return (
-      <div className="sc-stage" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.s})` }}>
+      <div className={`sc-stage${dims ? " is-dimmed" : ""}`} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.s})` }}>
         {id === 'sar' && img(sarUrl)}
         {id === 'probability' && <>{img(sarUrl, 'is-dim')}{img(prob?.url, 'is-pixel')}</>}
         {id === 'polygon' && <>{img(sarUrl)}{outline}</>}

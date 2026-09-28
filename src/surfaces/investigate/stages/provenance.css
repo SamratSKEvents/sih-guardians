@@ -91,7 +91,7 @@
 .pv-venn .a { fill: var(--series-3); fill-opacity: 0.35; }
 .pv-venn .b { fill: var(--slick); fill-opacity: 0.35; }
 .pv-venn .v { fill: var(--ink); font-size: 18px; font-weight: 700; text-anchor: middle; }
-.pv-venn .l { fill: var(--ink-muted); font-size: 10px; text-anchor: middle; }
+.pv-venn .l { fill: var(--ink-muted); font-size: var(--text-3xs); text-anchor: middle; }
 
 .pv-checks { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
 .pv-checks li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--space-4); padding: 6px 0; border-bottom: 1px solid var(--line-soft); font-size: var(--text-xs); }

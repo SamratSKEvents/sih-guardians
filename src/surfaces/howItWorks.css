@@ -1,0 +1,129 @@
+/* Landing section two: "How the System Works". Always dark, like the hero. */
+
+.hiw {
+  --ink: #eef4f8;
+  --cyan: #3cc8e8;
+  position: relative;
+  isolation: isolate;
+  padding: 6vh 3vw 8vh;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  background: #050a10 center bottom / cover no-repeat;
+}
+/* Sea kept, but pushed far back so the cards carry the section. */
+.hiw::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgb(4 9 16 / 0.96) 0%, rgb(4 9 16 / 0.72) 30%, rgb(4 9 16 / 0.72) 75%, rgb(4 9 16 / 0.92) 100%);
+}
+
+.hiw-stage {
+  position: relative;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  /* Everything inside scales with the stage width. */
+  font-size: clamp(9px, 0.95vw, 16px);
+}
+
+/* ── Heading ─────────────────────────────────────────── */
+.hiw-head { position: absolute; left: 1.5%; top: 0; }
+.hiw-head h2 {
+  margin: 0 0 0.3em;
+  font-size: 2.5em;
+  font-weight: 700;
+  line-height: 1.02;
+}
+.hiw-head h2 span { color: var(--cyan); }
+.hiw-head p {
+  margin: 0;
+  font-size: 1em;
+  line-height: 1.4;
+  color: rgb(238 244 248 / 0.92);
+}
+
+/* ── Connectors ──────────────────────────────────────── */
+.hiw-links { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.hiw-links path {
+  fill: none;
+  stroke: #7ee6ff;
+  stroke-width: 2.1;
+  stroke-dasharray: 9 9;
+  stroke-linecap: round;
+  animation: hiw-drift 5.7s linear infinite;
+}
+.hiw-links marker path { fill: #7ee6ff; stroke: none; animation: none; }
+.hiw-links circle {
+  fill: #0b2a38;
+  stroke: #7ee6ff;
+  stroke-width: 1.75;
+  filter: drop-shadow(0 0 6px rgb(94 224 255 / 0.7));
+}
+@keyframes hiw-drift { to { stroke-dashoffset: -36; } }
+
+/* ── Cards ───────────────────────────────────────────── */
+.hiw-cards { list-style: none; margin: 0; padding: 0; }
+.hiw-card {
+  position: absolute;
+  padding: 1.15em;
+  border-radius: 1.1em;
+  border: 1.5px solid rgb(94 224 255 / 0.6);
+  background: linear-gradient(160deg, rgb(14 44 60 / 0.82), rgb(6 22 34 / 0.88));
+  box-shadow: 0 0 22px rgb(60 200 232 / 0.22), inset 0 0 18px rgb(60 200 232 / 0.08);
+  backdrop-filter: blur(6px);
+  transform: perspective(1400px) rotateY(var(--ry)) rotateZ(var(--rz));
+  transition: box-shadow 0.4s, border-color 0.4s;
+}
+.hiw-card:hover { border-color: rgb(126 230 255 / 0.9); box-shadow: 0 0 30px rgb(60 200 232 / 0.35), inset 0 0 18px rgb(60 200 232 / 0.1); }
+
+.hiw-num {
+  position: absolute;
+  left: -1.1em;
+  top: -1.1em;
+  width: 2.6em;
+  height: 2.6em;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid var(--cyan);
+  background: #07202c;
+  color: #fff;
+  font-size: 1.15em;
+  font-weight: 600;
+  box-shadow: 0 0 14px rgb(60 200 232 / 0.5);
+}
+
+.hiw-card-head { margin: 0 0 0.8em 0; }
+.hiw-card h3 { margin: 0; font-size: 1.45em; font-weight: 600; }
+.hiw-card p { margin: 0; font-size: 0.95em; line-height: 1; color: rgb(238 244 248 / 0.8); }
+.hiw-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border-radius: 0.7em;
+}
+
+/* ── Scroll reveal ───────────────────────────────────── */
+.hiw-head, .hiw-card { opacity: 0; translate: 0 28px; transition: opacity 0.9s ease, translate 0.9s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.4s, border-color 0.4s; }
+.hiw-links g { opacity: 0; transition: opacity 0.9s ease; }
+.hiw.is-in .hiw-head { opacity: 1; translate: 0 0; }
+.hiw.is-in .hiw-card { opacity: 1; translate: 0 0; transition-delay: calc(0.3s + var(--i) * 0.22s), calc(0.3s + var(--i) * 0.22s), 0s, 0s; }
+.hiw.is-in .hiw-links g { opacity: 1; transition-delay: calc(0.6s + var(--i) * 0.22s); }
+
+/* ── Narrow: a plain column, no trail ────────────────── */
+@media (max-width: 900px) {
+  .hiw-stage { aspect-ratio: auto !important; font-size: 14px; }
+  .hiw-head { position: static; margin-bottom: 2.5rem; }
+  .hiw-links { display: none; }
+  .hiw-cards { display: grid; gap: 2.5rem; padding-left: 1rem; }
+  .hiw-card { position: relative; left: auto !important; top: auto !important; width: auto !important; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hiw-head, .hiw-card, .hiw-links g { opacity: 1; translate: none; transition: none; }
+  .hiw-links path { animation: none; }
+}

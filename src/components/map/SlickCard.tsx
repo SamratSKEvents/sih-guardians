@@ -155,7 +155,7 @@ export function SlickCard({
         subtitle={<span className="mono">{shortId(slickId)}</span>}
         onClose={onClose}
         footer={
-          p && (
+          p && !p.catalogOnly && (
             <Button tone="primary" className="slick-card-open" onClick={() => investigate(slickId)}>
               Investigate
               <ArrowRight size={14} strokeWidth={2.25} />
@@ -183,7 +183,11 @@ export function SlickCard({
             )}
 
             <FieldList>
-              <Field label="Observed" value={`${when.format(Date.parse(p.observedAt))} UTC`} />
+              <Field
+                label="Observed"
+                value={p.observedAt ? `${when.format(Date.parse(p.observedAt))} UTC` : 'Not in source'}
+                numeric={Boolean(p.observedAt)}
+              />
               <Field label="Area" value={km2(p.areaM2)} />
               <Field label="Length" value={km(p.lengthM)} />
               {typeof p.components === 'number' && p.components > 1 && (

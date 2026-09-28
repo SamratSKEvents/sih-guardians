@@ -13,8 +13,8 @@ import type { OutlineStep, CoastPoint } from '../../../forecast/outline.worker';
 import type { Forcing } from '../../../forecast/forcing';
 import { bearingOf, kmBetween, move, type Pt } from './mapData';
 
-export interface PlanState { assigned: Record<string, number>; acked: string[]; resolved: string[] }
-export const EMPTY_STATE: PlanState = { assigned: {}, acked: [], resolved: [] };
+export interface PlanState { assigned: Record<string, number>; acked: string[]; resolved: string[]; /** Operator's deploy / stand-down per boom; unset = the plan's recommendation. */ booms?: Record<string, boolean> }
+export const EMPTY_STATE: PlanState = { assigned: {}, acked: [], resolved: [], booms: {} };
 
 export type AssetKind = 'boom' | 'skimmer' | 'response' | 'tug' | 'supply' | 'sampling';
 export type AssetStatus = 'on scene' | 'en route' | 'standby' | 'unavailable';
@@ -22,7 +22,15 @@ export interface Asset {
   id: string; name: string; kind: AssetKind; knots: number; crew: number; home: Pt; target: Pt; task: string;
   status0: AssetStatus; depart: number; arrive: number; distKm: number; note?: string;
 }
-export interface Boom { id: 'A' | 'B'; line: Pt[]; lengthKm: number; centre: Pt; atH: number; recommended: boolean; reason: string; vessel?: string; readyH: number }
+export interface Boom {
+  id: string; name: string; kind: 'offshore' | 'shoreline'; type: string; line: Pt[]; lengthKm: number; centre: Pt;
+  /** Hour the forecast oil reaches the line; null = not within 24 h. */
+  atH: number | null; recommended: boolean; reason: string; vessel?: string; readyH: number; protects?: string;
+  /** Vessels that must be assigned for this line; deploying assigns them. */
+  crewIds?: string[];
+}
+/** Whether a boom is in the plan: the operator's choice, else the recommendation. */
+export const isDeployed = (b: Boom, s: PlanState) => s.booms?.[b.id] ?? b.recommended;
 export interface Mission { id: string; name: string; objective: string; platform: string; callsign: string; sensors: string; box: Pt[]; route: Pt[]; start: number; end: number; kind: 'plane' | 'drone' }
 export interface Station { id: string; role: string; at: Pt; priority: 'High' | 'Medium'; why: string; arrive: number }
 export interface Zone { id: string; name: string; shore: string; pts: Pt[]; first: number | null; km: number; priority: 'Immediate' | 'High' | 'Moderate' | 'Watch'; access: string }
@@ -84,7 +92,7 @@ export function buildPlan(o: {
   const port = staging[0].at;
 
   /* ------------------------------------------------------------- booms */
-  const mkBoom = (id: 'A' | 'B', hr: number, ahead: number): Boom => {
+  const mkBoom = (id: string, hr: number, ahead: number): Boom & { atH: number } => {
     const c = move(at(hr), o.driftBearing, ahead);
     const L = Math.min(2.6, Math.max(0.8, width(hr) * 1.3));
     const line: Pt[] = [];
@@ -93,10 +101,12 @@ export function buildPlan(o: {
       const p = move(c, o.driftBearing + 90, (k * L) / 2);
       line.push(move(p, o.driftBearing, 0.22 * L * (1 - k * k)));
     }
-    return { id, line, lengthKm: L, centre: c, atH: hr, recommended: false, reason: '', readyH: 0 };
+    return { id, name: `Boom ${id}`, kind: 'offshore', type: 'Offshore, inflatable · U-sweep', line, lengthKm: L, centre: c, atH: hr, recommended: false, reason: '', readyH: 0 };
   };
   const boomA = mkBoom('A', 4, 1);
   const boomB = mkBoom('B', 1.5, 0.3);
+  // A second line further down-drift: catches what passes A, needs its own pair of vessels.
+  const boomC = mkBoom('C', 10, 1.2);
 
   /* ------------------------------------------------------------ assets */
   const names = ['Sagar Rakshak', 'Samudra Seva', 'Neel Kamal', 'Tarangini', 'Jal Prahari', 'Vikram Sea', 'Coastal Hope', 'Harbour Star'];
@@ -132,6 +142,15 @@ export function buildPlan(o: {
     ? `Oil reaches this line at +${boomA.atH} h; both tow vessels are on station by +${boomA.readyH.toFixed(1)} h, leaving ${(boomA.atH - boomA.readyH).toFixed(1)} h to deploy.`
     : !hsOk ? `Sea state ${o.waveM.toFixed(1)} m exceeds offshore boom limits (≈1.2 m).` : !windOk ? `Wind ${windKt.toFixed(0)} kt exceeds boom limits (≈20 kt).` : `Tow vessels arrive at +${boomA.readyH.toFixed(1)} h, after the oil passes at +${boomA.atH} h.`;
   boomB.reason = bEta > boomB.atH ? `Oil passes this line at +${boomB.atH} h, before tow vessels can arrive (+${bEta.toFixed(1)} h).` : 'Shorter reach; leaves the thick leading edge unprotected.';
+  // Boom C is towed by the standby response vessel and skimmer once they are assigned.
+  const cTows = assets.filter((a) => a.id === 'resp-2' || a.id === 'skim-2');
+  const cAssigned = cTows.every((a) => o.state.assigned[a.id] !== undefined);
+  boomC.readyH = Math.max(...cTows.map((a) => 0.25 + kmBetween(a.home, boomC.centre) / (a.knots * KN)));
+  boomC.vessel = cTows.map((a) => a.name).join(' + ');
+  boomC.crewIds = cTows.map((a) => a.id);
+  boomC.recommended = false;
+  boomC.reason = !hsOk || !windOk ? 'Outside boom limits at this sea state.'
+    : `Second line: catches oil that escapes Boom A. Oil arrives +${boomC.atH} h; ${cAssigned ? `vessels on station by +${boomC.readyH.toFixed(1)} h` : `needs ${boomC.vessel} assigned (ready ≈ +${boomC.readyH.toFixed(1)} h)`}.`;
 
   /* ---------------------------------------------------------- missions */
   const box = (c: Pt, along: number, across: number): Pt[] => {
@@ -203,6 +222,25 @@ export function buildPlan(o: {
     } satisfies Zone;
   }).sort((a, b) => (a.first ?? 99) - (b.first ?? 99) || b.km - a.km).slice(0, 6).map((z, k) => ({ ...z, id: `Zone ${'ABCDEF'[k]}` }));
 
+  /* --------------------------------------------- shoreline protection booms */
+  // One deflection / exclusion boom at the front of each zone the oil reaches or nearly reaches.
+  const shoreBooms: Boom[] = zones.slice(0, 3).map((z, k) => {
+    const mid = z.pts[Math.floor(z.pts.length / 2)];
+    const along = z.pts.length > 1 ? bearingOf(z.pts[0], z.pts[z.pts.length - 1]) : o.driftBearing + 90;
+    const off = move(mid, bearingOf(mid, centre), 0.4);
+    const L = Math.min(1.8, Math.max(0.4, z.km * 0.15));
+    const line: Pt[] = [move(off, along, -L / 2), off, move(off, along, L / 2)];
+    const readyH = 1.5 + k * 0.5; // shore teams by road from staging
+    const hit = z.first !== null;
+    return {
+      id: `S${k + 1}`, name: `Shore ${z.id.replace('Zone ', '')}`, kind: 'shoreline', type: z.shore === 'Mangrove fringe' ? 'Exclusion, shore-sealing' : 'Deflection, shore-sealing',
+      line, lengthKm: L, centre: off, atH: z.first, readyH, protects: `${z.id} · ${z.shore}, ${z.name}`, vessel: 'Shore team + workboat',
+      recommended: hit && (z.first ?? 99) <= 18,
+      reason: hit ? `Oil reaches ${z.id} at +${z.first} h; a shore team can have this boom in by +${readyH.toFixed(1)} h.` : `${z.id} is on watch; oil is not forecast here within 24 h. Pre-stage only.`,
+    } satisfies Boom;
+  });
+  const booms = [boomA, boomB, boomC, ...shoreBooms];
+
   /* ------------------------------------------------------------ alerts */
   const windowH = Math.max(1, Math.min(o.firstShore ?? 24, boomA.atH + 8));
   const hitRec = o.receptors.find((r) => r.first !== undefined) ?? o.receptors.find((r) => r.reach < 10);
@@ -218,7 +256,7 @@ export function buildPlan(o: {
   /* ------------------------------------------------------------ events */
 
   return {
-    staging, boomA, boomB, booms: [boomA, boomB], assets, missions, stations, samplingRoute, zones, alerts, windowH,
+    staging, boomA, boomB, booms, assets, missions, stations, samplingRoute, zones, alerts, windowH,
     sampAssigned, feasible: { hsOk, windOk, windKt, waveM: o.waveM }, sampling: { start: sampAssigned ? 0.25 : 1, end: sampAssigned ? tCur : 1 + tCur },
     recommend: (() => {
       const free = assets.filter((a) => a.status0 === 'standby' && o.state.assigned[a.id] === undefined);

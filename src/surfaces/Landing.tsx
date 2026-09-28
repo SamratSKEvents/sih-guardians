@@ -1,170 +1,177 @@
 /**
- * The front door: what GUARDIANS is, in one screen, before the console.
+ * The front door: one dark hero, then the scrolling sections below it.
  *
- * Built from the system rather than beside it: the same tokens, type and
- * Badge, so it follows the mode toggle and reads as the same product. The map
- * is coastline linework with the catalog's Indian-waters detections on it,
- * from the local static catalog.
+ * The tablet is a flat image drawn in perspective. Its animation is an SVG laid
+ * over it in the image's own pixel space (viewBox = image size), so every
+ * overlay coordinate below is read straight off tab.webp — no 3D fitting.
+ * The tablet and the satellite open the Spills surface.
  */
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowRight, Crosshair, FileCheck2, Moon, Radar, Satellite, Sun, Waves } from 'lucide-react';
-import { Badge, type Claim } from '../design/components';
-import type { Mode } from '../design/useMode';
-import { loadLandRings } from '../forecast/land';
-import { DEMO_SLICKS } from '../api/slicks';
-import { investigate } from './tabs';
+import sea from '../../images/sea.webp';
+import satellite from '../../images/satellite.webp';
+import tab from '../../images/tab.webp';
+import { HowItWorks } from './HowItWorks';
+import { Problem } from './Problem';
+import { Impact } from './Impact';
 import './landing.css';
 
-const FLAGSHIP = 'edge:oil_04471';
+const toSpills = () => { location.hash = '#/spills'; };
 
-const STEPS: { n: string; icon: typeof Radar; title: string; q: string; body: string; claim?: Claim }[] = [
-  { n: '01', icon: Satellite, title: 'Detect', q: 'Is that dark patch oil?', claim: 'observed',
-    body: 'A segmentation model finds dark features in Sentinel-1 and EOS-04 radar. A second, independent model checks each one, and wind, rain and algae are ruled out before anything is called a possible slick.' },
-  { n: '02', icon: Crosshair, title: 'Trace', q: 'Where did it come from?', claim: 'reconstructed',
-    body: 'Particles run backwards through reanalysis wind and currents to find where the oil was hours earlier. Ships whose AIS tracks cross that region at the right time are ranked. A region and a candidate list, never a verdict.' },
-  { n: '03', icon: Waves, title: 'Forecast', q: 'Where is it going?', claim: 'predicted',
-    body: 'The same physics runs forwards: advection, spreading, evaporation, dispersion and stranding. Which shoreline gets oil, when, and how much.' },
-  { n: '04', icon: FileCheck2, title: 'Respond', q: 'So what do we do?',
-    body: 'A SITREP, an ICS action plan and a technical report, drafted from the same computed facts so the numbers cannot disagree between them. A human approves.' },
+const STEPS = [
+  { title: 'Detect', body: ['Find spills faster', 'with AI and satellite data.'] },
+  { title: 'Trace', body: ['Reconstruct origins', 'and follow the evidence.'] },
+  { title: 'Predict', body: ['Anticipate movement', 'before it spreads.'] },
+  { title: 'Protect', body: ['Enable faster, smarter', 'response for healthier oceans.'] },
 ];
 
-const SOURCES = ['Sentinel-1 SAR', 'EOS-04 / RISAT-1A', 'AIS · coastal + satellite', 'ERA5 wind', 'INCOIS / CMEMS currents', 'GEBCO bathymetry', 'NOAA ADIOS oil library', 'Natural Earth shoreline'];
+/* Coordinates in tab.webp pixels (1448 × 1086). */
+const SLICK = 'M586,322 C600,306 640,308 655,322 C668,338 690,346 700,370 C708,388 724,398 712,408 C694,412 670,392 650,370 C636,354 610,348 594,340 Z';
+const TRACK = 'M664,368 L702,396 L736,420 Q748,442 728,462 Q710,484 722,502 L762,532 L820,572';
+const DRIFT = 'M846,624 L993,722';
+const DOTS = [[820, 572], [846, 624], [993, 722]];
+const DRIFT_INNER = 'M858,632 L981,714'; /* between the two dots, clear of them */
+const COAST = '190,300 360,262 440,332 368,420 334,500 362,600 444,700 566,782 626,852 560,866 430,786 318,704 236,552 180,420';
+const ISLAND = '712,176 800,170 872,236 846,300 760,336 724,300';
+/* Traces of the baked dashed ovals [cx, cy, rx, ry, rotation], plus the drift line. */
+const OVALS = [
+  [878, 622, 175, 95, 15],
+  [912, 675, 160, 72, 20],
+  [898, 652, 108, 52, 20],
+  [965, 710, 114, 68, 20],
+  [1030, 745, 200, 95, 28],
+];
 
-const BOX = { w: 63.5, e: 95, s: 4, n: 25.5 };
+/* The next section's anchor. Scrolls rather than setting the hash, which is the app's router. */
+const toMission = () => document.getElementById('problem')?.scrollIntoView({ behavior: 'smooth' });
 
-interface Dot { id: string; at: [number, number]; verifier: string }
-
-function IndiaMap() {
-  const ref = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ w: 0, h: 0 });
-  const [land, setLand] = useState<[number, number][][]>([]);
-  const [dots, setDots] = useState<Dot[]>([]);
-  useLayoutEffect(() => {
-    const ro = new ResizeObserver(([e]) => setSize({ w: e.contentRect.width, h: e.contentRect.height }));
-    ro.observe(ref.current!);
-    return () => ro.disconnect();
-  }, []);
-  useEffect(() => {
-    loadLandRings().then((rings) => setLand(rings.filter((r) => r.some(([x, y]) => x > 55 && x < 100 && y > -5 && y < 35)))).catch(() => undefined);
-    setDots(DEMO_SLICKS.flatMap((slick) => {
-      const centre = slick.properties.centroid;
-      if (!Array.isArray(centre) || Number(centre[0]) < BOX.w || Number(centre[0]) > BOX.e || Number(centre[1]) < BOX.s || Number(centre[1]) > BOX.n) return [];
-      return [{ id: slick.id, at: [Number(centre[0]), Number(centre[1])] as [number, number], verifier: String(slick.properties.verifier ?? '') }];
-    }));
-  }, []);
-  const k = Math.cos((((BOX.s + BOX.n) / 2) * Math.PI) / 180);
-  const scale = Math.min(size.w / ((BOX.e - BOX.w) * k), size.h / (BOX.n - BOX.s));
-  const xy = ([lon, lat]: [number, number]) => [size.w / 2 + (lon - (BOX.w + BOX.e) / 2) * k * scale, size.h / 2 - (lat - (BOX.s + BOX.n) / 2) * scale];
-  const d = land.map((r) => r.map((p, i) => `${i ? 'L' : 'M'}${xy(p).map((v) => v.toFixed(1)).join(',')}`).join('') + 'Z').join('');
-  const flagship = dots.find((dot) => dot.id === FLAGSHIP);
-  const tone = (v: string) => (v === 'MULTI_MODEL_SUPPORTED' ? 'clear' : v === 'LOOKALIKE_WARNING' ? 'watch' : 'warning');
-
+export function Landing() {
   return (
-    <div className="lp-map" ref={ref}>
-      {size.w > 0 && (
-        <svg width={size.w} height={size.h} aria-hidden="true">
-          <path className="lp-land" d={d} />
-          {dots.filter((dot) => dot.id !== FLAGSHIP).map((dot) => {
-            const [x, y] = xy(dot.at);
-            return <circle key={dot.id} className={`lp-dot is-${tone(dot.verifier)}`} cx={x} cy={y} r={3.2} />;
-          })}
-          {flagship && (() => {
-            const [x, y] = xy(flagship.at);
-            return (
-              <g className="lp-flagship">
-                <circle className="lp-ring" cx={x} cy={y} r={16} />
-                <circle className="lp-ring lp-ring-late" cx={x} cy={y} r={16} />
-                <circle className="lp-dot is-critical" cx={x} cy={y} r={6} />
-              </g>
-            );
-          })()}
-        </svg>
-      )}
-      {flagship && size.w > 0 && (
-        <span className="lp-pin" style={{ left: xy(flagship.at)[0] + 16, top: xy(flagship.at)[1] - 16 }}>
-          <b>Possible slick</b> Gulf of Kutch · coast in 28 h
-        </span>
-      )}
-      <span className="lp-map-cap">{dots.length ? `${dots.length} radar detections in Indian waters` : 'Loading the catalog…'}</span>
-    </div>
-  );
-}
-
-/** The mode belongs to the application, so the shell passes its own in rather than this page keeping a copy. */
-export function Landing({ mode, setMode }: { mode: Mode; setMode: (mode: Mode) => void }) {
-  const next = mode === 'light' ? 'dark' : 'light';
-  const walk = () => {
-    location.hash = '#/spills';
-    // After the route has settled, so the shell's route effect does not close the tab it opens.
-    window.setTimeout(() => investigate(FLAGSHIP), 60);
-  };
-
-  return (
-    <div className={`lp theme-${mode}`}>
-      <header className="lp-bar">
-        <span className="app-mark">GUARDIANS</span>
-        <div className="lp-bar-end">
-          <button type="button" className="app-mode" onClick={() => setMode(next)} aria-label={`Switch to ${next} mode`}>
-            {mode === 'light' ? <Moon size={15} /> : <Sun size={15} />}
-          </button>
-          <a className="lp-btn lp-btn-ghost" href="#/spills">Open console <ArrowRight size={15} /></a>
-        </div>
+    <div className="landing">
+    <div className="hero" style={{ backgroundImage: `url(${sea})` }}>
+      <header className="hero-bar">
+        <a className="hero-logo" href="#/" aria-label="GUARDIANS home">
+          GUARDIANS
+          <svg viewBox="0 0 80 10" aria-hidden="true"><path d="M2 5 Q12 0 22 5 T42 5 T62 5 T78 5" /></svg>
+        </a>
+        <nav className="hero-nav">
+          <a href="#solutions">Solutions</a>
+          <a href="#technology">Technology</a>
+          <a href="#impact">Impact</a>
+          <a href="#about">About</a>
+        </nav>
       </header>
 
-      <section className="lp-hero">
-        <div>
-          <span className="lp-eyebrow"><Radar size={14} /> Maritime oil-spill intelligence for India's EEZ</span>
-          <h1>From a dark patch on radar to a <em>signed response plan</em>, before the oil reaches the coast.</h1>
-          <p className="lp-lede">
-            GUARDIANS finds possible oil slicks in satellite radar, traces the vessels that may have released them,
-            forecasts where the oil will strand, and drafts the response. Every number on screen says how much it
-            should be trusted.
+      <main className="hero-main">
+        <ol className="hero-steps">
+          {STEPS.map((step, i) => (
+            <li key={step.title} style={{ '--i': i } as React.CSSProperties}>
+              {/* Icon placeholder: drop the supplied icon inside .hero-icon. */}
+              <span className="hero-icon" aria-hidden="true" />
+              <div>
+                <h2>{step.title}<span className="dot">.</span></h2>
+                <p>{step.body[0]}<br />{step.body[1]}</p>
+              </div>
+              {i < STEPS.length - 1 && (
+                <svg className="hero-arrow" viewBox="0 0 150 110" aria-hidden="true">
+                  <path d="M6 2 C6 70 40 96 136 96" />
+                  <path d="M124 86 L138 96 L124 106" />
+                </svg>
+              )}
+            </li>
+          ))}
+        </ol>
+        {/* Button leads; the line under it is centred on it. */}
+        <div className="hero-action">
+          <button className="hero-cta" onClick={toMission}>Discover the mission <span className="arrow" aria-hidden="true">→</span></button>
+          <p className="hero-lede">
+            From detection to decision, GUARDIANS turns<br />ocean data into a cleaner, safer tomorrow.
           </p>
-          <div className="lp-cta">
-            <button type="button" className="lp-btn lp-btn-primary" onClick={walk}>Walk through a live incident <ArrowRight size={16} /></button>
-            <a className="lp-btn lp-btn-ghost" href="#/dashboard">Dashboard</a>
-          </div>
-          <dl className="lp-facts">
-            <div><dt>Coastline watched</dt><dd className="num">11,098<small> km</small></dd></div>
-            <div><dt>EEZ area</dt><dd className="num">2.02<small> M km²</small></dd></div>
-            <div><dt>Scene to draft plan</dt><dd className="num">40<small> min</small></dd></div>
-          </dl>
+          <a className="hero-demo" href="#/demo">▶ Watch the demo</a>
         </div>
-        <IndiaMap />
-      </section>
+      </main>
 
-      <section className="lp-steps">
-        {STEPS.map((step) => (
-          <article key={step.n} className="lp-step">
-            <div className="lp-step-top">
-              <span className="num">{step.n}</span>
-              <step.icon size={20} />
-            </div>
-            <h2>{step.title}</h2>
-            <p className="lp-step-q">{step.q}</p>
-            <p>{step.body}</p>
-            {step.claim ? <Badge claim={step.claim} /> : <Badge status="clear">Human decision</Badge>}
-          </article>
-        ))}
-      </section>
+      <button className="hero-sat" onClick={toSpills} aria-label="Open the spill map">
+        <img src={satellite} alt="" />
+      </button>
 
-      <section className="lp-rule">
-        <div>
-          <h2>The rule that outranks the rest</h2>
-          <p>A console that looks more certain than it is causes wrong boardings and missed beaches. Every figure carries where it came from, and every line on the map is drawn in its form.</p>
-        </div>
-        <div className="lp-rule-grid">
-          <div><Badge claim="observed" /><p>A sensor recorded it. SAR detection, AIS position report.</p></div>
-          <div><Badge claim="reconstructed" /><p>A model inferred it about the past. Backtracked drift, source region.</p></div>
-          <div><Badge claim="predicted" /><p>A model inferred it about the future. Forecast drift, shoreline exposure.</p></div>
-        </div>
-      </section>
+      <button className="hero-tab" onClick={toSpills} aria-label="Open the spill map">
+        <img src={tab} alt="" />
+        <svg className="hero-sim" viewBox="0 0 1448 1086" aria-hidden="true">
+          <defs>
+            <filter id="swell" x="0" y="0" width="100%" height="100%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.012 0.03" numOctaves="2" seed="4">
+                <animate attributeName="baseFrequency" dur="14s" repeatCount="indefinite"
+                  values="0.012 0.03;0.014 0.036;0.012 0.03" />
+              </feTurbulence>
+              <feDisplacementMap in="SourceGraphic" scale="7.2" />
+            </filter>
+            <filter id="soft"><feGaussianBlur stdDeviation="14" /></filter>
+            <filter id="glow"><feGaussianBlur stdDeviation="6" /></filter>
+            {/* Blur smears thin dashes into the glow around them; masked along the ovals it hides the baked ones. */}
+            <filter id="erase">
+              <feGaussianBlur stdDeviation="5" />
+              <feComponentTransfer>
+                <feFuncR type="linear" slope="0.8" /><feFuncG type="linear" slope="0.8" /><feFuncB type="linear" slope="0.8" />
+              </feComponentTransfer>
+            </filter>
+            <filter id="feather"><feGaussianBlur stdDeviation="3" /></filter>
+            <mask id="ovalBand">
+              <g className="band" filter="url(#feather)">
+                {OVALS.map(([cx, cy, rx, ry, rot], i) => (
+                  <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry} transform={`rotate(${rot} ${cx} ${cy})`} />
+                ))}
+                <path d={DRIFT_INNER} />
+                {/* Keep the baked dots sharp. */}
+                {DOTS.map(([x, y]) => <circle key={x} cx={x} cy={y} r="12" fill="#000" stroke="none" />)}
+              </g>
+            </mask>
+            <mask id="coast">
+              <g fill="#fff" filter="url(#soft)">
+                <polygon points={COAST} />
+                <polygon points={ISLAND} />
+              </g>
+            </mask>
+          </defs>
 
-      <section className="lp-sources">
-        <span>Built on</span>
-        {SOURCES.map((source) => <span key={source} className="lp-src">{source}</span>)}
-      </section>
+          {/* Land: the surf already in the picture, gently displaced. */}
+          <image href={tab} width="1448" height="1086" filter="url(#swell)" mask="url(#coast)" />
+
+          {/* Dotted ovals: the baked dashes are erased and redrawn as real dashes that march. */}
+          <image href={tab} width="1448" height="1086" filter="url(#erase)" mask="url(#ovalBand)" />
+          <g className="sim-ovals">
+            {OVALS.map(([cx, cy, rx, ry, rot], i) => (
+              <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry} transform={`rotate(${rot} ${cx} ${cy})`}
+                className={i % 2 ? 'ccw' : undefined} />
+            ))}
+            <path className="drift" d={DRIFT_INNER} />
+          </g>
+
+          {/* Slick: a slow breathing glow on its edge. */}
+          <path className="sim-slick" d={SLICK} filter="url(#glow)" />
+
+          {/* Backward track: dashes creeping back toward the slick. */}
+          <path className="sim-track" d={TRACK} />
+
+          {/* Forecast: uncertainty rippling outward from the drift origin. */}
+          <g transform="translate(900 660) rotate(24)">
+            {[0, 1, 2].map((n) => (
+              <ellipse key={n} className="sim-ripple" rx="250" ry="120" style={{ animationDelay: `${n * 3}s` }} />
+            ))}
+          </g>
+
+          {/* Particles drifting along the forecast path. */}
+          {[0, 1.6, 3.2].map((begin) => (
+            <circle key={begin} className="sim-particle" r="3.5">
+              <animateMotion dur="4.8s" begin={`${begin}s`} repeatCount="indefinite" path={DRIFT} />
+            </circle>
+          ))}
+        </svg>
+      </button>
+
+    </div>
+    <Problem />
+    <HowItWorks />
+    <Impact />
     </div>
   );
 }
