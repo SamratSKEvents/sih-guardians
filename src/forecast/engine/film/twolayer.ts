@@ -12,9 +12,8 @@
 // Bathymetry, coast, tide, drag, capacity are tunable assumptions on a synthetic domain.
 import { Rng, subSeed } from '../rng/prng';
 import { DEFAULT_WEATHERING } from '../particles/weathering';
-import { Budget, G, RHO_WATER, discRelease, volume, type Frame, type MapModel, type ParamSpec } from './grid';
-import { DEFAULT_FLOW, FLOW_SPEC, SurfaceFlow } from './flow';
-import { OIL_SPEC, filmWarnings, slickRows } from './thinfilm';
+import { Budget, G, RHO_WATER, discRelease, volume, type Frame, type ParamSpec } from './grid';
+import { DEFAULT_FLOW, SurfaceFlow } from './flow';
 import { rasterise, type ForcingRegion, type Polygon, type SlickProfile } from './shapes';
 
 const OMEGA_M2 = (2 * Math.PI) / (12.42 * 3600);
@@ -518,48 +517,5 @@ export class CoastalCore {
       ['oiled shoreline', `${((shore * this.frame.dx) / 1000).toFixed(2)} km of cells holding stranded oil`],
       ['sub-steps', `oil ${this.substeps} (dt ${this.lastDt.toFixed(1)} s), water ${this.waterSubsteps} last frame`],
     ];
-  }
-}
-
-export class TwoLayerModel implements MapModel {
-  readonly kind = 'map';
-  readonly id = 'twolayer';
-  readonly title = 'Two-layer shallow water';
-  readonly info = {
-    calculates: 'A coastal water layer (sea level and depth-averaged current from tide, wind, Coriolis and friction around a headland) and an oil layer on top with its own thickness and momentum: reduced-gravity spreading, drag towards the surface drift, oil-front movement and stranding on the shore.',
-    assumptions: 'Coast, bathymetry, tide amplitude, friction, interfacial drag and shoreline capacity are synthetic, tunable assumptions. Water is linear (no eddy shedding); oil drag on the water is included but tiny.',
-    master: 'Kept whole: it is the master\'s transport core (water layer, oil momentum and fronts, coast, stranding).',
-  };
-  readonly spec: ParamSpec[] = [...OIL_SPEC, ...SHELF_SPEC, ...FLOW_SPEC];
-  readonly params = { ...TWO_LAYER_DEFAULTS } as typeof TWO_LAYER_DEFAULTS & Record<string, number>;
-  readonly speeds = [60, 300, 900, 1800];
-  readonly core = new CoastalCore(this.params);
-  readonly supportsRegions = true;
-
-  get frame() { return this.core.frame; }
-  get t() { return this.core.t; }
-  set t(v: number) { this.core.t = v; }
-  get rhoOil() { return this.params.oilDensity; }
-  get sheenM() { return this.params.sheenUm * 1e-6; }
-
-  constructor(params: Partial<typeof TWO_LAYER_DEFAULTS> = {}) {
-    Object.assign(this.params, params);
-    this.reset();
-  }
-
-  reset() { this.core.reset(); }
-  setRegions(r: ForcingRegion[]) { this.core.setRegions(r); }
-  addOil(poly: Polygon, v: number, profile: SlickProfile, replace: boolean) { return this.core.addOil(poly, v, profile, replace); }
-  step(dt: number) { this.core.advance(dt, () => this.params.dispersionRate); }
-  thickness() { return this.core.oil.h; }
-  land() { return this.core.oil.land; }
-  arrows() { return this.core.arrows(); }
-
-  stats(): [string, string][] {
-    return [...slickRows(this), ...this.core.rows(), ...this.core.budget.rows(volume(this.core.oil.h, this.frame.dx))];
-  }
-
-  warnings(): string[] {
-    return filmWarnings(this, this.core.budget, volume(this.core.oil.h, this.frame.dx), Infinity);
   }
 }

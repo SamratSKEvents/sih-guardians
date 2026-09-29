@@ -18,9 +18,11 @@
 
 import type { ProductContext } from './context';
 import { loadReportFonts } from './report/browserFonts';
-import { generateIap, renderPdf as iapPdf } from './iap';
+import { generateIap } from './iap/IapGenerator';
+import { renderPdf as iapPdf } from './iap/renderers/PdfRenderer';
 import { mockIap001 } from './iap/data/mockIapIncident';
-import { generateSitrep, renderPdf as sitrepPdf } from './sitrep';
+import { generateSitrep } from './sitrep/SitrepGenerator';
+import { renderPdf as sitrepPdf } from './sitrep/renderers/PdfRenderer';
 import { mockSitrep002 } from './sitrep/data/mockSitrepIncident';
 import { buildReportData } from './report/data/mockIncidentReportData';
 import { generateTechnicalReport } from './report/ReportGenerator';

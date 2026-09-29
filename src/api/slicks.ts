@@ -41,7 +41,7 @@ export const fetchSlickTimeRange = async (): Promise<SlickTimeRange> => ({
  * they are drawn and inspectable but not investigable (`catalogOnly`).
  *
  *   meta.json            id -> [time, km², lon, lat]            (~0.7 MB, map boot)
- *   geom/lodN/<cell>.json outlines per 10° cell, 4 detail levels (per view)
+ *   geom/lodN/<cell>.json outlines per 10° cell (1° for lod3), 4 detail levels (per view)
  *   index.json           full per-slick record                   (~6 MB, first click)
  */
 type CatalogMeta = Record<string, [string | null, number | null, number, number]>;
@@ -54,10 +54,17 @@ const json = <T,>(url: string, fallback: T): Promise<T> =>
   fetch(url).then((r) => (r.ok ? r.json() : fallback)).catch(() => fallback);
 
 let meta: Promise<CatalogMeta> | undefined;
+const filled = new Map<number, Promise<Set<string>>>();
 let records: Promise<Map<string, CatalogRecord>> | undefined;
 const cells = new Map<string, Promise<Record<string, GeoPolygon>>>();
 
 const catalogMeta = () => (meta ??= json<CatalogMeta>(`${import.meta.env.BASE_URL}data/catalog/meta.json`, {}));
+/** Cells that hold at least one slick; the rest have no geom file (fetching them 404s). */
+const filledCells = (step: number) => {
+  let hit = filled.get(step);
+  if (!hit) filled.set(step, (hit = catalogMeta().then((m) => new Set(Object.values(m).map((r) => cellName(r[2], r[3], step))))));
+  return hit;
+};
 const catalogRecords = () =>
   (records ??= json<{ slicks: CatalogRecord[] }>(`${import.meta.env.BASE_URL}data/catalog/index.json`, { slicks: [] })
     .then(({ slicks }) => new Map(slicks.map((r) => [r.id, r]))));
@@ -65,10 +72,11 @@ const catalogRecords = () =>
 /** Coarser outlines further out, as the source tool tiered them (≈445 m … full detail). */
 const lodFor = (z: number) => (z <= 3 ? 'lod0' : z === 4 ? 'lod1' : z === 5 ? 'lod2' : 'lod3');
 
-/** The catalogue's 10° cell name, e.g. e030_n30 or w010_s10. */
-const cellName = (lon: number, lat: number) => {
-  const x = Math.floor(lon / 10) * 10;
-  const y = Math.floor(lat / 10) * 10;
+/** The catalogue's cell name, e.g. e030_n30 or w010_s10: 10° cells, 1° for lod3 (full detail is heavy). */
+const stepOf = (lod: string) => (lod === 'lod3' ? 1 : 10);
+const cellName = (lon: number, lat: number, step = 10) => {
+  const x = Math.floor(lon / step) * step;
+  const y = Math.floor(lat / step) * step;
   return `${x >= 0 ? 'e' : 'w'}${String(Math.abs(x)).padStart(3, '0')}_${y >= 0 ? 'n' : 's'}${String(Math.abs(y)).padStart(2, '0')}`;
 };
 
@@ -85,7 +93,7 @@ const cellOutlines = (lod: string, cell: string) => {
 async function catalogFeature(id: string): Promise<SlickFeature | undefined> {
   const r = (await catalogRecords()).get(id);
   if (!r) return undefined;
-  const geometry = (await cellOutlines('lod3', cellName(r.c[0], r.c[1])))[id] ?? null;
+  const geometry = (await cellOutlines('lod3', cellName(r.c[0], r.c[1], 1)))[id] ?? null;
   return {
     type: 'Feature',
     id,
@@ -137,10 +145,13 @@ const tileLat = (y: number, n: number) => (Math.atan(Math.sinh(Math.PI * (1 - (2
 async function catalogTile(z: number, x: number, y: number): Promise<SlickTileSlick[]> {
   const n = 1 << z;
   const [west, east, north, south] = [tileLon(x, n), tileLon(x + 1, n), tileLat(y, n), tileLat(y + 1, n)];
+  const lod = lodFor(z);
+  const step = stepOf(lod);
   const names = new Set<string>();
-  for (let lon = Math.floor(west / 10) * 10; lon < east; lon += 10)
-    for (let lat = Math.floor(south / 10) * 10; lat < north; lat += 10) names.add(cellName(lon, lat));
-  const [m, ...outlines] = await Promise.all([catalogMeta(), ...[...names].map((c) => cellOutlines(lodFor(z), c))]);
+  for (let lon = Math.floor(west / step) * step; lon < east; lon += step)
+    for (let lat = Math.floor(south / step) * step; lat < north; lat += step) names.add(cellName(lon, lat, step));
+  const [m, have] = await Promise.all([catalogMeta(), filledCells(step)]);
+  const outlines = await Promise.all([...names].filter((c) => have.has(c)).map((c) => cellOutlines(lod, c)));
   const out: SlickTileSlick[] = [];
   for (const cell of outlines)
     for (const [id, geometry] of Object.entries(cell)) {
