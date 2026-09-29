@@ -250,10 +250,12 @@ export function DemoTour({ onRoute, onExit }: { onRoute: (id: 'spills' | 'dashbo
       });
     };
 
-    // Clicking the real Investigate button on the Investigate step is the
-    // same as pressing Next there.
+    // Clicking the real Investigate button is pressing Next on the Investigate
+    // step, and skipping ahead to it from any globe step before it: otherwise the
+    // tour still stands on a globe step and its next Next takes you back to Spills.
+    const investigateStep = STEPS.findIndex((s) => s.investigates);
     const offInvestigate = onInvestigate(() => {
-      if (STEPS[at.current]?.investigates) void go(at.current + 1);
+      if (STEPS[at.current]?.view === 'map' && at.current <= investigateStep) void go(investigateStep + 1);
     });
 
     const onKey = (e: KeyboardEvent) => {
