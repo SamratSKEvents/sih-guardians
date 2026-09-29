@@ -155,12 +155,15 @@ export function SlickCard({
         subtitle={<span className="mono">{shortId(slickId)}</span>}
         onClose={onClose}
         footer={
-          p && !p.catalogOnly && (
+          p &&
+          (p.catalogOnly ? (
+            <p className="slick-card-note">Catalogue record only. Full investigations (SAR scene, origin, vessels, forecast, response) are available for 20 showcase slicks.</p>
+          ) : (
             <Button tone="primary" className="slick-card-open" onClick={() => investigate(slickId)}>
               Investigate
               <ArrowRight size={14} strokeWidth={2.25} />
             </Button>
-          )
+          ))
         }
       >
         {slick === 'error' && <Failed title="Details unavailable" detail={slickId} />}

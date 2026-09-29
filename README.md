@@ -12,6 +12,9 @@ A single evidence pipeline that turns satellite radar and vessel traffic into ex
 
 </div>
 
+> [!NOTE]
+> The globe holds all **13,739** catalogued slicks, but the **full investigation** (SAR scene, origin trace, vessel attribution, forecast and response plan) is built for **20 showcase slicks**. Every other slick shows its catalogue record only.
+
 ---
 
 ## The problem
@@ -167,6 +170,7 @@ flowchart LR
 
 This is a working prototype. For transparency:
 
+- **Investigation depth:** all 13,739 slicks carry their catalogue record (outline, date, size, source, confidence). The full five-stage investigation is available for **20 showcase slicks**; on any other slick the card says so instead of offering *Investigate*.
 - **Real data:** the slick catalogue and its outlines, the Sentinel-1 and Sentinel-2 scenes for the flagship case, the Natural Earth basemap and the coastline.
 - **Demonstration data:** vessel tracks for most cases, parts of the response plan, and the sea's small-scale eddies (only the mean wind and current come from data). The app labels these wherever they appear, and exported documents carry a **DEMONSTRATION** marking.
 
