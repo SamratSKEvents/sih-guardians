@@ -114,16 +114,44 @@ The dashboard turns the catalogue into figures: detections per month, verificati
 
 ## How it works
 
-```
- Sentinel-1 SAR ──► oil probability ──► slick outline ──► shape & confidence
-                                              │
-         wind + currents ──► backward trace ──┤──► release area & time window
-                                              │
-                AIS tracks ──► vessel scoring ┤──► ranked suspects
-                                              │
-         wind + currents ──► forward drift ───┤──► shoreline & receptor impact
-                                              │
-                                              └──► alerts ──► IAP · SITREP · report
+```mermaid
+flowchart LR
+  subgraph IN["Inputs"]
+    SAR["Sentinel-1 SAR"]
+    OPT["Sentinel-2 optical"]
+    MET["Wind & currents"]
+    AIS["AIS vessel tracks"]
+  end
+
+  subgraph DET["1 · Detection — observed"]
+    P["Oil probability"] --> O["Slick outline"] --> S["Shape & confidence"]
+    V["Second model +<br/>independent catalogues"]
+  end
+
+  subgraph TR["2–3 · Origin & vessels — reconstructed"]
+    B["Backward trace<br/>1,000 particles"] --> R["Release area<br/>& time window"]
+    R --> VS["Vessel scoring<br/>proximity · timing · heading · AIS gaps"]
+    VS --> SUS["Ranked suspects"]
+  end
+
+  subgraph FC["4 · Forecast — predicted"]
+    F["Forward drift<br/>24 h · 50 m grid"] --> I["Shoreline &<br/>receptor impact"]
+  end
+
+  subgraph RS["5 · Response"]
+    AL["Operational alerts"] --> DOC["IAP · SITREP ·<br/>Technical report"]
+  end
+
+  SAR --> P
+  OPT -.cross-check.-> S
+  V -.cross-check.-> S
+  O --> B
+  MET --> B
+  MET --> F
+  AIS --> VS
+  O --> F
+  I --> AL
+  SUS --> DOC
 ```
 
 | Layer | Technology |
