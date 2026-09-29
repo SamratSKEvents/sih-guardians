@@ -282,6 +282,7 @@ export const slicksLayer = {
     let dateRange: [number, number] | undefined;
     /** The rail's area window, km², [min, max]; max undefined means no upper bound. */
     let areaRange: [number, number | undefined] | undefined;
+    let slickFilter: ((slickId: string) => boolean) | undefined;
     let selected: string | undefined;
     let destroyed = false;
     let scheduled = 0;
@@ -317,7 +318,7 @@ export const slicksLayer = {
         const inArea =
           !areaRange || part.areaKm2 === null ||
           (part.areaKm2 >= areaRange[0] && (areaRange[1] === undefined || part.areaKm2 <= areaRange[1]));
-        const shown = inRange && inArea && (timeMode === 'only' ? onDay : true);
+        const shown = inRange && inArea && (!slickFilter || slickFilter(part.slickId)) && (timeMode === 'only' ? onDay : true);
         if (shown === part.shown) continue;
         part.shown = shown;
         part.attributes.show = ShowGeometryInstanceAttribute.toValue(shown, part.attributes.show);
@@ -437,6 +438,11 @@ export const slicksLayer = {
       },
       setAreaRange(range) {
         areaRange = range;
+        for (const tile of tiles.values()) if (tile !== 'loading' && tile.ready) applyTime(tile);
+        scene.requestRender();
+      },
+      setSlickFilter(test) {
+        slickFilter = test;
         for (const tile of tiles.values()) if (tile !== 'loading' && tile.ready) applyTime(tile);
         scene.requestRender();
       },

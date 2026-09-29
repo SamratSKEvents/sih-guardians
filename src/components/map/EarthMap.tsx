@@ -317,6 +317,7 @@ function EarthCanvas({
   timeMode,
   dateRange,
   areaRange,
+  slickFilter,
 }: {
   time: number;
   mode: EarthMode;
@@ -341,6 +342,7 @@ function EarthCanvas({
   timeMode: SlickTimeMode;
   dateRange: [number, number] | undefined;
   areaRange: [number, number | undefined] | undefined;
+  slickFilter: ((slickId: string) => boolean) | undefined;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
@@ -433,6 +435,13 @@ function EarthCanvas({
     });
 
     viewerRef.current = viewer;
+    // The tour waits on this: its first step is the globe, so not before it has drawn.
+    const offTiles = viewer.scene.globe.tileLoadProgressEvent.addEventListener((queued: number) => {
+      if (queued === 0 && viewer.scene.globe.tilesLoaded) {
+        hostRef.current?.closest('.earth-map')?.setAttribute('data-ready', '');
+        offTiles();
+      }
+    });
     // Cesium's clock never advances by itself; the timeline sets it.
     viewer.clock.shouldAnimate = false;
 
@@ -776,6 +785,13 @@ function EarthCanvas({
 
   useEffect(() => {
     const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) return;
+    for (const controller of layerControllersRef.current.values()) controller.setSlickFilter?.(slickFilter);
+    viewer.scene.requestRender();
+  }, [slickFilter]);
+
+  useEffect(() => {
+    const viewer = viewerRef.current;
     if (!viewer) return;
 
     const target = mode === '2D' ? SceneMode.SCENE2D : SceneMode.SCENE3D;
@@ -817,6 +833,7 @@ export function EarthMap({
   timeMode = 'all',
   dateRange,
   areaRange,
+  slickFilter,
   onFocusChange,
 }: {
   time: number;
@@ -826,6 +843,8 @@ export function EarthMap({
   dateRange?: [number, number];
   /** The rail's area window, km²; max undefined means no upper bound. Undefined draws every size. */
   areaRange?: [number, number | undefined];
+  /** The rail's source filters as a per-slick test. Undefined draws every slick. */
+  slickFilter?: (slickId: string) => boolean;
   /** Fires with the selected entity id, or undefined when selection clears. */
   onFocusChange?: (entityId: string | undefined) => void;
 }) {
@@ -978,6 +997,7 @@ export function EarthMap({
         timeMode={timeMode}
         dateRange={dateRange}
         areaRange={areaRange}
+        slickFilter={slickFilter}
       />
 
       {/* One backdrop for both kinds of selection.

@@ -24,7 +24,7 @@ import { EarthMap } from '../components/map/EarthMap';
 import { InfoDot, Segmented, Timeline, useTimeline } from '../design/components';
 import { AIS_DEMO_WINDOW } from '../layers/aisDemo';
 import type { SlickTimeMode } from '../layers';
-import { FilterRail, INITIAL_FILTERS, type FilterState } from './FilterRail';
+import { FilterRail, INITIAL_FILTERS, useSlickFilter, type FilterState } from './FilterRail';
 import './spills.css';
 
 const DAY_MS = 86_400_000;
@@ -101,6 +101,7 @@ export function SpillsSurface() {
   // The rail's window, in epoch ms and half-open, so the last day is included
   // whole. Undefined while the rail is showing the catalog's full extent —
   // the layer then skips the date test entirely.
+  const slickFilter = useSlickFilter(filters);
   const [fromDay, toDay] = filters.dates;
   const dateRange: [number, number] | undefined =
     fromDay || toDay
@@ -134,6 +135,7 @@ export function SpillsSurface() {
               ? [filters.area[0], filters.area[1] >= 100 ? undefined : filters.area[1]]
               : undefined
           }
+          slickFilter={slickFilter}
           // Selecting a vessel freezes time so the card describes a fixed moment.
           onFocusChange={(entityId) => entityId && timeline.pause()}
         />

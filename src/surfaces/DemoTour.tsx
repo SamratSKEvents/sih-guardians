@@ -31,7 +31,7 @@ const FLAGSHIP = 'edge:oil_04471';
 type Target = { css: string } | { text: string; minW?: number; minH?: number };
 
 interface Step {
-  view: DemoView | 'map';
+  view: DemoView | 'map' | 'dashboard';
   target: Target;
   title: string;
   body: string;
@@ -42,11 +42,12 @@ interface Step {
   investigates?: boolean;
 }
 
+/* The main flow only: globe, projection, one slick, its investigation, the dashboard. */
 const STEPS: Step[] = [
-  { view: 'map', target: { css: '.earth-map' }, title: 'Every slick, one globe',
+  { view: 'map', target: { css: '.earth-map[data-ready]' }, title: 'Every slick, one globe',
     body: '13,739 radar-detected oil slicks from three sources, on one globe. Drag to turn it, scroll to zoom.' },
-  { view: 'map', target: { css: '.ds-legend' }, title: 'Slicks and vessels', side: 'right',
-    body: 'Oil slicks are the orange shapes. AIS vessels are the ships that were near them. Slick density shows where spills cluster.' },
+  { view: 'map', target: { css: '.earth-projection' }, title: '2D or 3D', side: 'bottom',
+    body: 'Switch between the globe and a flat map. Try it, then press Next.' },
   { view: 'map', target: { css: '.slick-card' }, title: 'One slick, up close', side: 'top', select: true,
     body: 'We zoom to a slick off the Gulf of Kutch. Its card gives the size, the date of the pass and how sure the model is.' },
   { view: 'map', target: { css: '.slick-card-open' }, title: 'Investigate it', side: 'top', select: true, investigates: true,
@@ -61,6 +62,8 @@ const STEPS: Step[] = [
     body: 'Run forward, the drift shows which towns and protected reefs lie in its path, and when oil reaches them.' },
   { view: { tab: 'response', page: 'alerts' }, target: { css: '.ws-export' }, title: 'What to do', side: 'bottom',
     body: 'A response plan built from the forecast, handed over as an Incident Action Plan, SITREP and full report in one click.' },
+  { view: 'dashboard', target: { css: '.db-kpis' }, title: 'The whole catalogue', side: 'bottom',
+    body: 'The dashboard: every slick and suspect vessel as figures and charts, filterable by date, size and verification.' },
 ];
 
 /* ------------------------------------------------------------ targeting */
@@ -142,15 +145,15 @@ function TourCard({ index, step, onPrev, onNext, onExit }: CardProps) {
 
 /* ----------------------------------------------------------------- tour */
 
-export function DemoTour({ onMap, onExit }: { onMap: () => void; onExit: () => void }) {
+export function DemoTour({ onRoute, onExit }: { onRoute: (id: 'spills' | 'dashboard') => void; onExit: () => void }) {
   const d = useRef<Driver | undefined>(undefined);
   const at = useRef(-1);
   const run = useRef(0);
   const card = useRef<Root | undefined>(undefined);
   const exitRef = useRef(onExit);
   exitRef.current = onExit;
-  const mapRef = useRef(onMap);
-  mapRef.current = onMap;
+  const routeRef = useRef(onRoute);
+  routeRef.current = onRoute;
 
   useEffect(() => {
     const drv = driver({
@@ -188,8 +191,10 @@ export function DemoTour({ onMap, onExit }: { onMap: () => void; onExit: () => v
       const prev = STEPS[at.current];
       const moved = !prev || JSON.stringify(prev.view) !== JSON.stringify(step.view);
       at.current = i;
-      if (step.view === 'map') {
-        mapRef.current();
+      if (step.view === 'dashboard') {
+        routeRef.current('dashboard');
+      } else if (step.view === 'map') {
+        routeRef.current('spills');
         // The globe has to mount before it can hear which slick to show.
         if (step.select) setTimeout(() => my === run.current && demoSelectSlick(FLAGSHIP), moved ? 600 : 0);
       } else {
@@ -198,9 +203,18 @@ export function DemoTour({ onMap, onExit }: { onMap: () => void; onExit: () => v
       }
       // Let the old page leave before looking, or its map could be picked up.
       if (moved) await new Promise((r) => setTimeout(r, 450));
-      // The camera is still flying to the slick; let the card settle first.
-      if (step.select && !prev?.select) await new Promise((r) => setTimeout(r, 3200));
-      const el = await waitFor(step.target);
+      // While the camera flies to the slick, the whole map is lit, not dimmed;
+      // the spotlight moves to the card once it lands.
+      if (step.select && !prev?.select) {
+        document.body.classList.add('gt-clear');
+        const map = await waitFor({ css: '.earth-map' });
+        if (my !== run.current) return;
+        drv.highlight({ element: map });
+        await new Promise((r) => setTimeout(r, 3200));
+        if (my !== run.current) return;
+      }
+      // The globe can take a while on a cold load.
+      const el = await waitFor(step.target, i === 0 ? 60000 : 10000);
       if (my !== run.current) return;
       el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       // On the zoomed slick the map already spotlights the slick; a second

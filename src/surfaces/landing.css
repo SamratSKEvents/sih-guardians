@@ -145,17 +145,6 @@
   white-space: nowrap;
 }
 
-.hero-demo {
-  margin-top: 0.7rem;
-  font-size: 0.85rem;
-  letter-spacing: 0.08em;
-  color: var(--cyan);
-  text-decoration: none;
-  opacity: 0.8;
-  transition: opacity 0.2s;
-}
-.hero-demo:hover { opacity: 1; text-decoration: underline; }
-
 .hero .hero-cta {
   position: relative;
   overflow: hidden;

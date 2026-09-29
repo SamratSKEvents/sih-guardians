@@ -24,6 +24,8 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['cesium'],
+    // Pre-bundle everything up front: a dep found late (lucide-react in the
+    // lazy Dashboard) re-optimises mid-session and leaves two React copies.
+    include: ['cesium', 'react', 'react-dom', 'react-dom/client', 'react/jsx-runtime', 'lucide-react', 'leaflet', 'driver.js'],
   },
 });

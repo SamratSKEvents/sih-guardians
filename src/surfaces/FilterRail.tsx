@@ -17,7 +17,7 @@
  * only then the knobs.
  */
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PanelLeftClose, SlidersHorizontal } from 'lucide-react';
 import {
   Advanced,
@@ -28,6 +28,7 @@ import {
   Switch,
   Toggle,
 } from '../design/components';
+import { loadSlickVessels, type SlickVessel } from '../layers/slickVessels';
 import './filterRail.css';
 
 export interface FilterState {
@@ -41,7 +42,6 @@ export interface FilterState {
   area: [number, number];
   query: string;
   sources: Record<string, boolean>;
-  aoi: Record<string, boolean>;
   match: number;
 }
 
@@ -50,18 +50,42 @@ export const INITIAL_FILTERS: FilterState = {
   dates: ['', ''],
   area: [0, 100],
   query: '',
-  sources: { vessel: true, dark: false, infrastructure: true, none: true },
-  aoi: { mpa: false, eez: false, custom: false },
-  match: 0.66,
+  sources: { vessel: true, dark: false, none: true },
+  match: 0,
 };
 
-/* Facet counts: how many detections each row is currently letting through.
- * Without them, narrowing a filter is guesswork until the map redraws. */
-const SOURCE_ROWS = [
-  { id: 'vessel', label: 'Vessel identified nearby', count: '412' },
-  { id: 'infrastructure', label: 'Oil and gas infrastructure nearby', count: '86' },
-  { id: 'none', label: 'No potential source identified', count: '786' },
-];
+/* Candidate vessels per slick (public/data/slick-vessels.json). Slicks with
+ * none listed are the "no potential source" rows. */
+function useCandidates() {
+  const [list, setList] = useState<SlickVessel[]>([]);
+  useEffect(() => { loadSlickVessels().then(setList); }, []);
+  return useMemo(() => {
+    const by = new Map<string, SlickVessel['vessel'][]>();
+    for (const { slickId, vessel } of list) by.set(slickId, [...(by.get(slickId) ?? []), vessel]);
+    return by;
+  }, [list]);
+}
+
+type Vessel = SlickVessel['vessel'] & { score?: number; gaps?: unknown[]; imo?: string };
+
+/** The rail's source filters as a per-slick test, or undefined when they let everything through. */
+export function useSlickFilter(f: FilterState) {
+  const by = useCandidates();
+  const q = f.query.trim().toLowerCase();
+  const { vessel, none, dark } = f.sources;
+  return useMemo(() => {
+    if (vessel && none && !dark && !q && f.match <= 0) return undefined;
+    const fits = (v: Vessel) =>
+      (v.score ?? 0) >= f.match &&
+      (!dark || (v.gaps?.length ?? 0) > 0) &&
+      (!q || [v.name, v.flag, v.mmsi, v.imo, v.type].some((x) => String(x ?? '').toLowerCase().includes(q)));
+    return (id: string) => {
+      const vs = by.get(id) as Vessel[] | undefined;
+      if (!vs) return none && !dark && !q && f.match <= 0;
+      return vessel && vs.some(fits);
+    };
+  }, [by, vessel, none, dark, q, f.match]);
+}
 
 /** How many filters are actually excluding something right now. */
 function activeCount(f: FilterState, from: string, to: string) {
@@ -70,9 +94,9 @@ function activeCount(f: FilterState, from: string, to: string) {
   if ((f.dates[0] && f.dates[0] > from) || (f.dates[1] && f.dates[1] < to)) n += 1;
   if (f.area[0] > 0 || f.area[1] < 100) n += 1;
   if (f.query.trim()) n += 1;
-  n += SOURCE_ROWS.filter((row) => !f.sources[row.id]).length;
+  if (!f.sources.vessel) n += 1;
+  if (!f.sources.none) n += 1;
   if (f.sources.dark) n += 1;
-  n += Object.values(f.aoi).filter(Boolean).length;
   if (f.match > 0) n += 1;
   return n;
 }
@@ -93,6 +117,8 @@ export function FilterRail({
   const set = <K extends keyof FilterState>(key: K, value: FilterState[K]) =>
     onChange({ ...filters, [key]: value });
   const active = activeCount(filters, from, to);
+  const by = useCandidates();
+  const darkCount = [...by.values()].filter((vs) => vs.some((v) => ((v as Vessel).gaps?.length ?? 0) > 0)).length;
 
   if (!open) {
     return (
@@ -147,53 +173,29 @@ export function FilterRail({
             onSubmit={(value) => set('query', value)}
           />
           <div className="fr-checks">
-            {SOURCE_ROWS.map((row) => (
-              <Toggle
-                key={row.id}
-                label={row.label}
-                value={row.count}
-                checked={filters.sources[row.id] ?? false}
-                onChange={(checked) => set('sources', { ...filters.sources, [row.id]: checked })}
-              />
-            ))}
+            <Toggle
+              label="Vessel identified nearby"
+              value={String(by.size)}
+              checked={filters.sources.vessel}
+              onChange={(checked) => set('sources', { ...filters.sources, vessel: checked })}
+            />
+            <Toggle
+              label="No potential source identified"
+              checked={filters.sources.none}
+              onChange={(checked) => set('sources', { ...filters.sources, none: checked })}
+            />
             {/* Nested under its parent: it narrows that row rather than
               * standing beside it, and it is meaningless when vessels are off. */}
             <div className="fr-nested">
               <Switch
                 label="Dark vessels only"
                 info="Vessels whose AIS went quiet around the detection. Absence of a signal is not proof of anything."
-                value="57"
+                value={String(darkCount)}
                 checked={filters.sources.dark ?? false}
                 disabled={!filters.sources.vessel}
                 onChange={(checked) => set('sources', { ...filters.sources, dark: checked })}
               />
             </div>
-          </div>
-        </Advanced>
-
-        <Advanced variant="plain" label="Areas of interest" defaultOpen={false}>
-          <div className="fr-checks">
-            <Switch
-              label="Marine protected areas"
-              info="MPAs from the World Database on Protected Areas."
-              value="14"
-              checked={filters.aoi.mpa}
-              onChange={(checked) => set('aoi', { ...filters.aoi, mpa: checked })}
-            />
-            <Switch
-              label="Exclusive economic zones"
-              info="EEZ boundaries. Shown for context; they carry no enforcement meaning here."
-              value="6"
-              checked={filters.aoi.eez}
-              onChange={(checked) => set('aoi', { ...filters.aoi, eez: checked })}
-            />
-            {/* No figure: this one is an action, not a set of things in view. */}
-            <Switch
-              label="Draw or upload an area"
-              info="Restrict every layer to a boundary you supply."
-              checked={filters.aoi.custom}
-              onChange={(checked) => set('aoi', { ...filters.aoi, custom: checked })}
-            />
           </div>
         </Advanced>
 

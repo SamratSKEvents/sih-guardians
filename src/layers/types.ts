@@ -24,6 +24,8 @@ export interface MapLayerController {
   setDateRange?(range: [number, number] | undefined): void;
   /** The rail's area window in km², [min, max]; max undefined means no upper bound. */
   setAreaRange?(range: [number, number | undefined] | undefined): void;
+  /** The rail's source filters as a per-slick test; undefined passes every slick. */
+  setSlickFilter?(test: ((slickId: string) => boolean) | undefined): void;
   destroy(): void;
 }
 

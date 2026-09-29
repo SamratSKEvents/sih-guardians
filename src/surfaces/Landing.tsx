@@ -13,15 +13,16 @@ import tab from '../../images/tab.webp';
 import { HowItWorks } from './HowItWorks';
 import { Problem } from './Problem';
 import { Impact } from './Impact';
+import { Radar, Route, Waves, ShieldCheck } from 'lucide-react';
 import './landing.css';
 
 const toSpills = () => { location.hash = '#/spills'; };
 
 const STEPS = [
-  { title: 'Detect', body: ['Find spills faster', 'with AI and satellite data.'] },
-  { title: 'Trace', body: ['Reconstruct origins', 'and follow the evidence.'] },
-  { title: 'Predict', body: ['Anticipate movement', 'before it spreads.'] },
-  { title: 'Protect', body: ['Enable faster, smarter', 'response for healthier oceans.'] },
+  { title: 'Detect', Icon: Radar, body: ['Find spills faster', 'with AI and satellite data.'] },
+  { title: 'Trace', Icon: Route, body: ['Reconstruct origins', 'and follow the evidence.'] },
+  { title: 'Predict', Icon: Waves, body: ['Anticipate movement', 'before it spreads.'] },
+  { title: 'Protect', Icon: ShieldCheck, body: ['Enable faster, smarter', 'response for healthier oceans.'] },
 ];
 
 /* Coordinates in tab.webp pixels (1448 × 1086). */
@@ -41,8 +42,11 @@ const OVALS = [
   [1030, 745, 200, 95, 28],
 ];
 
-/* The next section's anchor. Scrolls rather than setting the hash, which is the app's router. */
-const toMission = () => document.getElementById('problem')?.scrollIntoView({ behavior: 'smooth' });
+/* Scrolls rather than setting the hash, which is the app's router. */
+const scrollTo = (id: string) => (e: React.MouseEvent) => {
+  e.preventDefault();
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+};
 
 export function Landing() {
   return (
@@ -54,10 +58,9 @@ export function Landing() {
           <svg viewBox="0 0 80 10" aria-hidden="true"><path d="M2 5 Q12 0 22 5 T42 5 T62 5 T78 5" /></svg>
         </a>
         <nav className="hero-nav">
-          <a href="#solutions">Solutions</a>
-          <a href="#technology">Technology</a>
-          <a href="#impact">Impact</a>
-          <a href="#about">About</a>
+          <a href="#problem" onClick={scrollTo('problem')}>Problem</a>
+          <a href="#mission" onClick={scrollTo('mission')}>Solution</a>
+          <a href="#impact" onClick={scrollTo('impact')}>Impact</a>
         </nav>
       </header>
 
@@ -65,8 +68,7 @@ export function Landing() {
         <ol className="hero-steps">
           {STEPS.map((step, i) => (
             <li key={step.title} style={{ '--i': i } as React.CSSProperties}>
-              {/* Icon placeholder: drop the supplied icon inside .hero-icon. */}
-              <span className="hero-icon" aria-hidden="true" />
+              <span className="hero-icon" aria-hidden="true"><step.Icon size={22} strokeWidth={1.75} /></span>
               <div>
                 <h2>{step.title}<span className="dot">.</span></h2>
                 <p>{step.body[0]}<br />{step.body[1]}</p>
@@ -82,11 +84,10 @@ export function Landing() {
         </ol>
         {/* Button leads; the line under it is centred on it. */}
         <div className="hero-action">
-          <button className="hero-cta" onClick={toMission}>Discover the mission <span className="arrow" aria-hidden="true">→</span></button>
+          <button className="hero-cta" onClick={toSpills}>Discover the mission <span className="arrow" aria-hidden="true">→</span></button>
           <p className="hero-lede">
             From detection to decision, GUARDIANS turns<br />ocean data into a cleaner, safer tomorrow.
           </p>
-          <a className="hero-demo" href="#/spills">▶ Watch the demo</a>
         </div>
       </main>
 

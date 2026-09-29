@@ -105,7 +105,7 @@ export function App() {
 
   return (
     <div className={`app theme-${mode}`}>
-      {touring && <Suspense fallback={null}><DemoTour onMap={() => { if (route.id !== 'spills') window.location.hash = '#/spills'; setTabId(undefined); }} onExit={() => setTouring(false)} /></Suspense>}
+      {touring && <Suspense fallback={null}><DemoTour onRoute={(id) => { if (route.id !== id) window.location.hash = `#/${id}`; setTabId(undefined); }} onExit={() => setTouring(false)} /></Suspense>}
       <header className="app-bar">
         <a className="app-mark" href="#/" onClick={() => setTabId(undefined)}>GUARDIANS</a>
 
