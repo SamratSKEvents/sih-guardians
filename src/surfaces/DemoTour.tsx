@@ -174,7 +174,7 @@ export function DemoTour({ onRoute, onExit }: { onRoute: (id: 'spills' | 'dashbo
 
     const exit = () => {
       run.current++;
-      document.body.classList.remove('gt-clear');
+      document.body.classList.remove('gt-clear', 'gt-wait');
       drv.destroy();
       const old = card.current;
       card.current = undefined;
@@ -187,6 +187,9 @@ export function DemoTour({ onRoute, onExit }: { onRoute: (id: 'spills' | 'dashbo
       if (i < 0) return;
       if (i >= STEPS.length) return exit();
       const my = ++run.current;
+      // Between steps the next page may take a moment to load: the page stays usable meanwhile, and the
+      // overlay and card come back with the next step's highlight.
+      document.body.classList.add('gt-wait');
       const step = STEPS[i];
       const prev = STEPS[at.current];
       const moved = !prev || JSON.stringify(prev.view) !== JSON.stringify(step.view);
@@ -220,6 +223,7 @@ export function DemoTour({ onRoute, onExit }: { onRoute: (id: 'spills' | 'dashbo
       // On the zoomed slick the map already spotlights the slick; a second
       // dim over it only makes the oil harder to see.
       document.body.classList.toggle('gt-clear', Boolean(step.select));
+      document.body.classList.remove('gt-wait');
       drv.highlight({
         element: el,
         popover: {
@@ -263,7 +267,7 @@ export function DemoTour({ onRoute, onExit }: { onRoute: (id: 'spills' | 'dashbo
     return () => {
       window.removeEventListener('keydown', onKey);
       offInvestigate();
-      document.body.classList.remove('gt-clear');
+      document.body.classList.remove('gt-clear', 'gt-wait');
       run.current++;
       drv.destroy();
       const old = card.current;

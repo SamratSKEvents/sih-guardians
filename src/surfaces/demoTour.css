@@ -37,6 +37,11 @@
 .driver-popover.gt-pop[data-side='left'] { position-area: left span-bottom; }
 .driver-popover.gt-pop[data-side='top'] { position-area: top span-left; }
 .driver-popover.gt-pop[data-side='bottom'] { position-area: bottom span-right; }
+/* Waiting for the next step's page: nothing of the tour shows, and nothing is blocked. */
+.gt-wait .driver-overlay,
+.gt-wait .driver-popover { display: none !important; }
+.gt-wait.driver-active * { pointer-events: auto; }
+
 /* Zoomed slick steps: the map's own spotlight already frames the slick. */
 .gt-clear .driver-overlay { opacity: 0; }
 
