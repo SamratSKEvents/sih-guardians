@@ -51,8 +51,8 @@ function useData() {
   const [rows, setRows] = useState<RowData>();
   const [stats, setStats] = useState<Stats>();
   useEffect(() => {
-    fetch('/data/catalog/rows.json').then((r) => r.json()).then(setRows).catch(() => undefined);
-    fetch('/data/catalog/stats.json').then((r) => r.json()).then(setStats).catch(() => undefined);
+    fetch(`${import.meta.env.BASE_URL}data/catalog/rows.json`).then((r) => r.json()).then(setRows).catch(() => undefined);
+    fetch(`${import.meta.env.BASE_URL}data/catalog/stats.json`).then((r) => r.json()).then(setStats).catch(() => undefined);
   }, []);
   // Sea names once per load, not per filter change.
   const seas = useMemo(() => rows?.lon.map((x, i) => seaName([x, rows.lat[i]]) ?? 'Open sea'), [rows]);
@@ -185,7 +185,7 @@ function useSuspects(want: boolean) {
   const [list, setList] = useState<Suspect[]>();
   useEffect(() => {
     if (!want || list) return;
-    fetch('/data/slick-vessels.json').then((r) => r.json()).then(setList).catch(() => setList([]));
+    fetch(`${import.meta.env.BASE_URL}data/slick-vessels.json`).then((r) => r.json()).then(setList).catch(() => setList([]));
   }, [want, list]);
   return list;
 }

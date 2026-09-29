@@ -30,7 +30,7 @@ let cache: Promise<SlickVessel[]> | undefined;
 
 /** The precomputed ships (see tools/slick-vessels.mjs). */
 export function loadSlickVessels(): Promise<SlickVessel[]> {
-  cache ??= json('/data/slick-vessels.json').then((list) => list ?? []);
+  cache ??= json(`${import.meta.env.BASE_URL}data/slick-vessels.json`).then((list) => list ?? []);
   return cache;
 }
 
@@ -44,7 +44,7 @@ export function computeSlickVessels(): Promise<SlickVessel[]> {
       const centre = slick.properties.centroid as Pt;
       const land = indexLand(rings.filter((r) => r.some(([x, y]) => Math.abs(x - centre[0]) < 3 && Math.abs(y - centre[1]) < 3)));
       const id = resolveIncidentId(slick);
-      const base = id ? `/data/incidents/${id}` : undefined;
+      const base = id ? `${import.meta.env.BASE_URL}data/incidents/${id}` : undefined;
       const [incident, ais, cands] = base
         ? await Promise.all([json(`${base}/incident.json`), json(`${base}/ais.json`), json(`${base}/candidates.json`)])
         : [];

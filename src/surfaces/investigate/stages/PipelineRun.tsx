@@ -140,7 +140,7 @@ export function PipelineRun({ slick, incident, incidentId, onClose, onOpen }: {
         return `${(areaM2 / 1e6).toFixed(2)} km² · age ${age.lowH.toFixed(0)}–${age.highH.toFixed(0)} h`;
       });
       await step('optical', async () => {
-        const ix = await fetch('/data/eo/index.json').then((r) => r.json()).catch(() => ({}));
+        const ix = await fetch(`${import.meta.env.BASE_URL}data/eo/index.json`).then((r) => r.json()).catch(() => ({}));
         const e = ix[slick.id];
         if (!e || e.status !== 'AVAILABLE') return 'No cloud-free pass within ±5 days';
         patch('optical', { log: [e.item, `${e.found} passes searched`] });
@@ -168,7 +168,7 @@ export function PipelineRun({ slick, incident, incidentId, onClose, onOpen }: {
       }));
       await step('ais', async () => {
         const land = indexLand((await loadLandRings().catch(() => [])).filter((r) => r.some(([x, y]) => Math.abs(x - centre[0]) < 3 && Math.abs(y - centre[1]) < 3)) as Pt[][]);
-        const base = incidentId ? `/data/incidents/${incidentId}` : undefined;
+        const base = incidentId ? `${import.meta.env.BASE_URL}data/incidents/${incidentId}` : undefined;
         const json = async (n: string) => (base ? fetch(`${base}/${n}`).then((r) => (r.ok ? r.json() : undefined)).catch(() => undefined) : undefined);
         const [ais, cands] = await Promise.all([json('ais.json'), json('candidates.json')]);
         const vessels: MapVessel[] = ais?.tracks?.length ? carryToPass(fromBundle(ais, cands, t0, centre), land) : generate(slick.id, centre, land);

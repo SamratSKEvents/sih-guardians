@@ -13,7 +13,7 @@ type TopologyObject =
   | { type: 'MultiPolygon'; arcs: number[][][] };
 
 // 1:50m Natural Earth land (world-atlas@2), served from public/ so a run never waits on a CDN.
-const LAND_URL = '/data/land-50m.json';
+const LAND_URL = `${import.meta.env.BASE_URL}data/land-50m.json`;
 
 function decodeArcs(topology: Topology) {
   const scale = topology.transform?.scale ?? [1, 1];
@@ -60,7 +60,7 @@ function collect(object: TopologyObject, arcs: LonLat[][], out: LonLat[][]) {
  * shorelines where the slicks are, so oil stops at the real coast rather than
  * at a coastline generalised by kilometres.
  */
-const HIRES_URL = '/data/land-hires.json';
+const HIRES_URL = `${import.meta.env.BASE_URL}data/land-hires.json`;
 
 let cache: Promise<LonLat[][]> | undefined;
 

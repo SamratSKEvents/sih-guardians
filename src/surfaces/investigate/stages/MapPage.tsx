@@ -91,7 +91,7 @@ export function MapPage({ slick, incident, incidentId }: { slick: SlickFeature; 
       const near = rawLand.filter((r) => r.some(([x, y]) => Math.abs(x - centre[0]) < 3 && Math.abs(y - centre[1]) < 3)) as Pt[][];
       const idx = indexLand(near);
       if (live) setLand(idx);
-      const base = incidentId ? `/data/incidents/${incidentId}` : undefined;
+      const base = incidentId ? `${import.meta.env.BASE_URL}data/incidents/${incidentId}` : undefined;
       const json = async (name: string) => (base ? fetch(`${base}/${name}`).then((r) => (r.ok ? r.json() : undefined)).catch(() => undefined) : undefined);
       const [ais, cands, environment] = await Promise.all([json('ais.json'), json('candidates.json'), json('environment.json')]);
       const list = ais?.tracks?.length ? carryToPass(fromBundle(ais, cands, t0, centre), idx) : generate(slick.id, centre, idx);

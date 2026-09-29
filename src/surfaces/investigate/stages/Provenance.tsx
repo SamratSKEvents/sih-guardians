@@ -52,7 +52,7 @@ export function ProvenancePage({ slick, incident, incidentId }: { slick: SlickFe
   useEffect(() => {
     let live = true;
     setFiles(undefined);
-    const base = incidentId ? `/data/incidents/${incidentId}` : undefined;
+    const base = incidentId ? `${import.meta.env.BASE_URL}data/incidents/${incidentId}` : undefined;
     const get = (n: string) => (base ? fetch(`${base}/${n}`).then((r) => (r.ok ? r.json() : undefined)).catch(() => undefined) : Promise.resolve(undefined));
     Promise.all(['provenance.json', 'events.json', 'detection.json', 'posthoc.json'].map(get)).then(([provenance, events, detection, posthoc]) => {
       if (live) setFiles({ provenance, events, detection, posthoc });

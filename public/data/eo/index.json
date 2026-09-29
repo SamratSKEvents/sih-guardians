@@ -1,7 +1,7 @@
 {
  "edge:oil_04471": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_04471.jpg",
+  "file": "data/eo/edge_oil_04471.jpg",
   "item": "S2B_MSIL2A_20260315T054639_R048_T42QWL_20260315T092334",
   "platform": "Sentinel-2B",
   "datetime": "2026-03-15T05:46:39.024000Z",
@@ -21,7 +21,7 @@
  },
  "edge:oil_11208": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_11208.jpg",
+  "file": "data/eo/edge_oil_11208.jpg",
   "item": "S2B_MSIL2A_20260210T053849_R005_T42QZG_20260210T091916",
   "platform": "Sentinel-2B",
   "datetime": "2026-02-10T05:38:49.024000Z",
@@ -43,7 +43,7 @@
  },
  "edge:oil_05958": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_05958.jpg",
+  "file": "data/eo/edge_oil_05958.jpg",
   "item": "S2C_MSIL2A_20260311T051651_R062_T43PEN_20260311T103414",
   "platform": "Sentinel-2C",
   "datetime": "2026-03-11T05:16:51.025000Z",
@@ -62,7 +62,7 @@
  },
  "edge:oil_06540": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_06540.jpg",
+  "file": "data/eo/edge_oil_06540.jpg",
   "item": "S2B_MSIL2A_20260126T044959_R076_T45QUC_20260126T083358",
   "platform": "Sentinel-2B",
   "datetime": "2026-01-26T04:49:59.024000Z",
@@ -84,7 +84,7 @@
  },
  "edge:oil_06831": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_06831.jpg",
+  "file": "data/eo/edge_oil_06831.jpg",
   "item": "S2C_MSIL2A_20260209T051951_R062_T43PFL_20260209T102711",
   "platform": "Sentinel-2C",
   "datetime": "2026-02-09T05:19:51.025000Z",
@@ -103,7 +103,7 @@
  },
  "edge:oil_08480": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_08480.jpg",
+  "file": "data/eo/edge_oil_08480.jpg",
   "item": "S2A_MSIL2A_20260212T044901_R033_T45QWD_20260212T092612",
   "platform": "Sentinel-2A",
   "datetime": "2026-02-12T04:49:01.024000Z",
@@ -122,7 +122,7 @@
  },
  "edge:oil_08868": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_08868.jpg",
+  "file": "data/eo/edge_oil_08868.jpg",
   "item": "S2B_MSIL2A_20260220T053749_R005_T42QYD_20260220T092634",
   "platform": "Sentinel-2B",
   "datetime": "2026-02-20T05:37:49.024000Z",
@@ -141,7 +141,7 @@
  },
  "edge:oil_09353": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_09353.jpg",
+  "file": "data/eo/edge_oil_09353.jpg",
   "item": "S2B_MSIL2A_20260314T043659_R033_T45QXC_20260314T082902",
   "platform": "Sentinel-2B",
   "datetime": "2026-03-14T04:36:59.024000Z",
@@ -161,7 +161,7 @@
  },
  "edge:oil_09838": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_09838.jpg",
+  "file": "data/eo/edge_oil_09838.jpg",
   "item": "S2B_MSIL2A_20260207T052909_R105_T43PBT_20260207T092426",
   "platform": "Sentinel-2B",
   "datetime": "2026-02-07T05:29:09.024000Z",
@@ -181,7 +181,7 @@
  },
  "edge:oil_10614": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_10614.jpg",
+  "file": "data/eo/edge_oil_10614.jpg",
   "item": "S2B_MSIL2A_20260302T053639_R005_T42QYG_20260302T093017",
   "platform": "Sentinel-2B",
   "datetime": "2026-03-02T05:36:39.024000Z",
@@ -200,7 +200,7 @@
  },
  "cerulean:slick_9102": {
   "status": "AVAILABLE",
-  "file": "/data/eo/cerulean_slick_9102.jpg",
+  "file": "data/eo/cerulean_slick_9102.jpg",
   "item": "S2B_MSIL2A_20260315T054639_R048_T42QXH_20260315T092334",
   "platform": "Sentinel-2B",
   "datetime": "2026-03-15T05:46:39.024000Z",
@@ -220,7 +220,7 @@
  },
  "edge:oil_04502": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_04502.jpg",
+  "file": "data/eo/edge_oil_04502.jpg",
   "item": "S2B_MSIL2A_20260315T054639_R048_T42QWK_20260315T092334",
   "platform": "Sentinel-2B",
   "datetime": "2026-03-15T05:46:39.024000Z",
@@ -240,7 +240,7 @@
  },
  "edge:oil_04891": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_04891.jpg",
+  "file": "data/eo/edge_oil_04891.jpg",
   "item": "S2C_MSIL2A_20260202T053031_R105_T43QBU_20260202T084320",
   "platform": "Sentinel-2C",
   "datetime": "2026-02-02T05:30:31.025000Z",
@@ -262,7 +262,7 @@
  },
  "edge:oil_05182": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_05182.jpg",
+  "file": "data/eo/edge_oil_05182.jpg",
   "item": "S2B_MSIL2A_20260118T053049_R105_T43PCT_20260118T073403",
   "platform": "Sentinel-2B",
   "datetime": "2026-01-18T05:30:49.024000Z",
@@ -281,7 +281,7 @@
  },
  "edge:oil_05473": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_05473.jpg",
+  "file": "data/eo/edge_oil_05473.jpg",
   "item": "S2C_MSIL2A_20260220T044831_R076_T44QRF_20260220T091216",
   "platform": "Sentinel-2C",
   "datetime": "2026-02-20T04:48:31.025000Z",
@@ -300,7 +300,7 @@
  },
  "edge:oil_05667": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_05667.jpg",
+  "file": "data/eo/edge_oil_05667.jpg",
   "item": "S2B_MSIL2A_20260224T051719_R062_T43PDQ_20260224T090846",
   "platform": "Sentinel-2B",
   "datetime": "2026-02-24T05:17:19.024000Z",
@@ -319,7 +319,7 @@
  },
  "edge:oil_06152": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_06152.jpg",
+  "file": "data/eo/edge_oil_06152.jpg",
   "item": "S2C_MSIL2A_20260211T060001_R091_T42QVK_20260211T083612",
   "platform": "Sentinel-2C",
   "datetime": "2026-02-11T06:00:01.025000Z",
@@ -341,7 +341,7 @@
  },
  "edge:oil_07413": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_07413.jpg",
+  "file": "data/eo/edge_oil_07413.jpg",
   "item": "S2C_MSIL2A_20260214T042901_R133_T45QYE_20260214T080510",
   "platform": "Sentinel-2C",
   "datetime": "2026-02-14T04:29:01.025000Z",
@@ -360,7 +360,7 @@
  },
  "edge:oil_07704": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_07704.jpg",
+  "file": "data/eo/edge_oil_07704.jpg",
   "item": "S2C_MSIL2A_20260211T041911_R090_T46QDH_20260211T075415",
   "platform": "Sentinel-2C",
   "datetime": "2026-02-11T04:19:11.025000Z",
@@ -379,7 +379,7 @@
  },
  "edge:oil_08092": {
   "status": "AVAILABLE",
-  "file": "/data/eo/edge_oil_08092.jpg",
+  "file": "data/eo/edge_oil_08092.jpg",
   "item": "S2B_MSIL2A_20260212T043809_R033_T45QWD_20260212T081425",
   "platform": "Sentinel-2B",
   "datetime": "2026-02-12T04:38:09.024000Z",

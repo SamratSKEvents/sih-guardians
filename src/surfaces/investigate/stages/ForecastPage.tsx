@@ -250,7 +250,7 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
     if (!land) return;
     let live = true;
     (async () => {
-      const base = incidentId ? `/data/incidents/${incidentId}` : undefined;
+      const base = incidentId ? `${import.meta.env.BASE_URL}data/incidents/${incidentId}` : undefined;
       const json = async (name: string) => (base ? fetch(`${base}/${name}`).then((r) => (r.ok ? r.json() : undefined)).catch(() => undefined) : undefined);
       const [ais, cands] = await Promise.all([json('ais.json'), json('candidates.json')]);
       const list = ais?.tracks?.length ? carryToPass(fromBundle(ais, cands, t0, centre), land) : generate(slick.id, centre, land);

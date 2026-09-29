@@ -1,7 +1,7 @@
 /**
  * Incident bundles.
  *
- * These are static files under `/data/incidents/<id>/`, not an API: a bundle is
+ * These are static files under `data/incidents/<id>/` (below the site base), not an API: a bundle is
  * frozen output, identical on every request. The prototype ships these as
  * local static assets and loads only the artifact needed by the open stage.
  *
@@ -44,7 +44,7 @@ export function resolveIncidentId(slick: SlickFeature): string | undefined {
   return typeof scene === 'string' ? BY_SCENE[scene] : undefined;
 }
 
-const base = (incidentId: string) => `/data/incidents/${encodeURIComponent(incidentId)}`;
+const base = (incidentId: string) => `${import.meta.env.BASE_URL}data/incidents/${encodeURIComponent(incidentId)}`;
 
 export const fetchIncident = async (incidentId: string): Promise<Incident> => {
   const response = await fetch(`${base(incidentId)}/incident.json`);

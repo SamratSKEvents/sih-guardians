@@ -144,7 +144,7 @@ let eoIndex: Promise<Record<string, EoEntry>> | undefined;
 function OpticalCheck({ slickId, rings, obsAt }: { slickId: string; rings: number[][][]; obsAt: number }) {
   const [e, setE] = useState<EoEntry | null>();
   useEffect(() => {
-    eoIndex ??= fetch('/data/eo/index.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+    eoIndex ??= fetch(`${import.meta.env.BASE_URL}data/eo/index.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
     let live = true;
     eoIndex.then((ix) => live && setE(ix[slickId] ?? null));
     return () => void (live = false);

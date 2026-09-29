@@ -57,9 +57,9 @@ let meta: Promise<CatalogMeta> | undefined;
 let records: Promise<Map<string, CatalogRecord>> | undefined;
 const cells = new Map<string, Promise<Record<string, GeoPolygon>>>();
 
-const catalogMeta = () => (meta ??= json<CatalogMeta>('/data/catalog/meta.json', {}));
+const catalogMeta = () => (meta ??= json<CatalogMeta>(`${import.meta.env.BASE_URL}data/catalog/meta.json`, {}));
 const catalogRecords = () =>
-  (records ??= json<{ slicks: CatalogRecord[] }>('/data/catalog/index.json', { slicks: [] })
+  (records ??= json<{ slicks: CatalogRecord[] }>(`${import.meta.env.BASE_URL}data/catalog/index.json`, { slicks: [] })
     .then(({ slicks }) => new Map(slicks.map((r) => [r.id, r]))));
 
 /** Coarser outlines further out, as the source tool tiered them (≈445 m … full detail). */
@@ -76,7 +76,7 @@ const cellOutlines = (lod: string, cell: string) => {
   const key = `${lod}/${cell}`;
   let hit = cells.get(key);
   if (!hit) {
-    hit = json<{ slicks?: Record<string, GeoPolygon> }>(`/data/catalog/geom/${key}.json`, {}).then((t) => t.slicks ?? {});
+    hit = json<{ slicks?: Record<string, GeoPolygon> }>(`${import.meta.env.BASE_URL}data/catalog/geom/${key}.json`, {}).then((t) => t.slicks ?? {});
     cells.set(key, hit);
   }
   return hit;

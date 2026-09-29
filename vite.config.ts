@@ -1,13 +1,17 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// The site's base path: '/' locally, '/<repo>/' on GitHub Pages (set by the deploy workflow).
+const base = process.env.BASE ?? '/';
+
 export default defineConfig({
+  base,
   plugins: [react()],
   // The prototype is static; Vite only serves the bundled frontend and assets.
   server: { port: 5199, strictPort: true },
   preview: { port: 5199, strictPort: true },
   define: {
-    CESIUM_BASE_URL: JSON.stringify('/cesium'),
+    CESIUM_BASE_URL: JSON.stringify(`${base}cesium`),
   },
   build: {
     target: 'es2022',

@@ -206,7 +206,7 @@ const BASEMAPS = [
     // underneath covers that.
     id: 'natural-earth',
     label: 'Natural Earth II (offline)',
-    url: '/tiles/NaturalEarthII/{z}/{x}/{reverseY}.jpg',
+    url: `${import.meta.env.BASE_URL}tiles/NaturalEarthII/{z}/{x}/{reverseY}.jpg`,
     maximumLevel: 5,
     geographic: true,
     credit: 'Natural Earth II (public domain)',
