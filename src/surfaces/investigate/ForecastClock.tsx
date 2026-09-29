@@ -3,12 +3,7 @@
  * Forecast & impact.
  */
 
-import { useMemo } from 'react';
 import { Meter, Timeline } from '../../design/components';
-import type { GeoPolygon } from '../../api/slicks';
-import type { LonLat } from '../../incidents/types';
-import { extentOf, type Extent } from './chart-types';
-import { ringsOf } from './geometry';
 import { useForecast } from '../../forecast/context';
 
 export function ForecastClock() {
@@ -54,23 +49,3 @@ export function RunProgress() {
   );
 }
 
-/**
- * Where the drift charts look.
- *
- * The detection until the horizon run has reached +24 h — a few seconds —
- * then everywhere the oil goes in it, so the operator sees the drift rather
- * than a speck. That is one reframe, early; nothing moves the camera after.
- */
-export function useDriftExtent(geometry: GeoPolygon | null, track: readonly LonLat[], centre: LonLat | undefined): Extent {
-  const { reach } = useForecast();
-  const points: LonLat[] = [...track];
-  if (reach) points.push({ lon: reach[0], lat: reach[1] }, { lon: reach[2], lat: reach[3] });
-  for (const ring of ringsOf(geometry)) for (const [lon, lat] of ring) points.push({ lon, lat });
-  // 0.02° — about 2 km — so a slick a few hundred metres long is not framed
-  // edge to edge.
-  const box = extentOf(points, centre ?? { lon: 0, lat: 0 }, 0.02);
-  // Keyed on the numbers: callers rebuild `track` every render, and a new
-  // array here would re-home the camera on every clock tick.
-  const key = box.join(',');
-  return useMemo(() => key.split(',').map(Number) as Extent, [key]);
-}

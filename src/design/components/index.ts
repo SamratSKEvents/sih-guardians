@@ -10,26 +10,21 @@ export type { ButtonTone } from './controls';
 
 export {
   Badge,
-  CLAIM_LABEL,
   CLAIM_STROKE,
   Field,
   FieldList,
-  MapLabel,
   Meter,
-  Method,
-  Stat,
 } from './display';
-export type { Claim, MethodStep, Status } from './display';
+export type { Claim, Status } from './display';
 
-export { HealthRow, MapLegend, MapStatusBar } from './map';
-export type { HealthItem, HealthState } from './map';
+export { MapLegend, MapStatusBar } from './map';
 
-export { Advanced, Notice, Panel, Table, Tabs } from './surfaces';
+export { Advanced, Notice, Panel, Table } from './surfaces';
 export type { Column } from './surfaces';
 
-export { Empty, Failed, Loading, Skeleton } from './states';
+export { Failed, Skeleton } from './states';
 
 export { DateRangeRow, InfoDot, RangeSlider, ScaleSlider, Search, Switch } from './filters';
 
-export { PLAYBACK_SPEEDS, Timeline, useTimeline } from './timeline';
-export type { PlaybackSpeed, TimelineState } from './timeline';
+export { Timeline, useTimeline } from './timeline';
+export type { TimelineState } from './timeline';

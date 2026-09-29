@@ -18,7 +18,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
   Activity, AlertTriangle, ArrowRight, ChevronDown, Clock, Compass, Crosshair, Droplets, Gauge, Layers, Leaf, MapPin, Maximize, Pause, Play, SkipBack, SkipForward,
-  RotateCcw, Ship, Target, Thermometer, Waves, Wind,
+  Ship, Target, Thermometer, Waves, Wind,
 } from 'lucide-react';
 import { Badge } from '../../../design/components';
 import type { SlickFeature } from '../../../api/slicks';
@@ -219,7 +219,6 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
   const [coast, setCoast] = useState<CoastPoint[]>([]);
   const [outlineDone, setOutlineDone] = useState({ forward: false, backward: false });
   const [envRings, setEnvRings] = useState<LonLat[][]>([]);
-  const [cloud, setCloud] = useState<{ hour: number; pts: LonLat[]; alive: number; beached: number }>();
   const clouds = useRef(new Map<number, LonLat[]>());
   useEffect(() => {
     if (!release.length || volumeM3 <= 0) return;
@@ -237,7 +236,7 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
     const b = new Worker(new URL('../../../forecast/backtrack.worker.ts', import.meta.url), { type: 'module' });
     b.onmessage = (e: MessageEvent<BacktrackMessage>) => {
       const m = e.data;
-      if (m.kind === 'step') { clouds.current.set(m.step.hour, m.cloud); bwdHeadRef.current = -m.step.hour; setBwd((x) => [...x, m.step]); setCloud({ hour: m.step.hour, pts: m.cloud, alive: m.alive, beached: m.beached }); }
+      if (m.kind === 'step') { clouds.current.set(m.step.hour, m.cloud); bwdHeadRef.current = -m.step.hour; setBwd((x) => [...x, m.step]); }
       else setOutlineDone((x) => ({ ...x, backward: true }));
     };
     b.postMessage({ rings: release, forcing, hours: BACK_H, seed: hashOf(slick.id) } satisfies BacktrackRequest);
@@ -287,7 +286,6 @@ export function ForecastPage({ slick, incident, incidentId, page, setPage, direc
   };
 
   const display = t;
-  const at = t0 + t * 3_600_000;
   const [planState, setPlanState] = usePlanState(slick.id);
   const [picked, setPicked] = useState<string>();
   const plan = useMemo(() => (response && fwd.length > 12 ? buildPlan({

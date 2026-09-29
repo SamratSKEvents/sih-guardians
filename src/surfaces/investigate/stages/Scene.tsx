@@ -355,7 +355,7 @@ export function SceneView({ slick, incident, incidentId }: { slick: SlickFeature
 
         {/* Headline figures */}
         <section className="sc-tiles">
-          <Tile label="Area" value={km2(Number(p.areaM2))} note={detection?.totalAreaKm2 ? `${parts.length} parts total` : 'outline'} />
+          <Tile label="Area" value={km2(Number(p.areaM2))} note={detection?.totalAreaKm2 ? `${parts.length} part${parts.length === 1 ? '' : 's'} total` : 'outline'} />
           <Tile label="Length" value={km(main.lengthM ?? Number(p.lengthM))} note="major axis" />
           <Tile label="Width" value={main.widthM ? km(main.widthM) : '—'} note="minor axis" />
           <Tile label="Aspect" value={main.lengthM && main.widthM ? `${(main.lengthM / main.widthM).toFixed(1)} : 1` : '—'} note="elongation" />

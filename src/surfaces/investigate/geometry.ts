@@ -100,37 +100,6 @@ export function principalAxis(rings: number[][][], centre: LonLat | undefined): 
   return { bearingDeg: ((bearing % 180) + 180) % 180, lengthKm, widthKm };
 }
 
-/** Points of a (Multi)Polygon-ish shape, for extent fitting. */
-export function pointsOf(shape: { type: string; coordinates: unknown } | undefined): LonLat[] {
-  if (!shape) return [];
-  const out: LonLat[] = [];
-  const walk = (node: unknown) => {
-    if (!Array.isArray(node)) return;
-    if (typeof node[0] === 'number' && typeof node[1] === 'number') {
-      out.push({ lon: node[0], lat: node[1] });
-      return;
-    }
-    for (const child of node) walk(child);
-  };
-  walk(shape.coordinates);
-  return out;
-}
-
-/** Rings of a (Multi)Polygon-ish shape, for drawing. */
-export function shapeRings(shape: { type: string; coordinates: unknown } | undefined): number[][][] {
-  if (!shape) return [];
-  const polygons = shape.type === 'Polygon' ? [shape.coordinates] : shape.coordinates;
-  const out: number[][][] = [];
-  if (!Array.isArray(polygons)) return out;
-  for (const polygon of polygons) {
-    if (!Array.isArray(polygon)) continue;
-    for (const ring of polygon) {
-      if (Array.isArray(ring) && ring.length > 2) out.push(ring as number[][]);
-    }
-  }
-  return out;
-}
-
 /**
  * The slick itself, as a layer any chart can carry.
  *

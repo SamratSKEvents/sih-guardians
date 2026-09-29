@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { Check, CircleDashed, Loader2, Play, RotateCcw, X } from 'lucide-react';
+import { Check, CircleDashed, Loader2, RotateCcw, X } from 'lucide-react';
 import type { SlickFeature } from '../../../api/slicks';
 import type { Incident } from '../../../incidents/types';
 import { VERIFIER } from '../../../format';
@@ -56,6 +56,15 @@ export function PipelineRun({ slick, incident, incidentId, onClose, onOpen }: {
   const cancel = useRef(false);
   // Each run's token; a run whose token is stale stops at its next step and writes nothing.
   const runId = useRef(0);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
+  // A modal closes on Escape, the same as its × button.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { cancel.current = true; closeRef.current(); } };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   useEffect(() => {
     if (!running) return;
@@ -238,4 +247,3 @@ export function PipelineRun({ slick, incident, incidentId, onClose, onOpen }: {
   );
 }
 
-export { Play as PipelineIcon };

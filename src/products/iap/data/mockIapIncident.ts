@@ -93,7 +93,6 @@ const ON_WATER = ['PROTECTION', 'CONTAINMENT', 'SURVEILLANCE_VESSEL', 'SAMPLING'
 const HZ_SEA: SafetyHazard = { hazardId: 'HZ-01', type: 'SEA STATE', description: 'Moderate swell during small-craft boom and sampling work.', severity: 'MEDIUM', appliesTo: ON_WATER, from: null, to: null, mitigation: 'Transfers only within vessel operator limits; lifejackets worn on deck; two-person rule for over-side work.', stopWorkCriteria: 'Conditions exceed the operating limit supplied for the vessel, or skipper judges transfer unsafe.' };
 const HZ_HEAT: SafetyHazard = { hazardId: 'HZ-02', type: 'HEAT', description: 'Afternoon heat stress for shore, sensor and sampling teams.', severity: 'MEDIUM', appliesTo: ['SHORELINE', 'MONITORING', 'SAMPLING', 'SURVEILLANCE_DRONE'], from: T(18, '06:00'), to: T(18, '11:00'), mitigation: 'Work–rest cycles and hydration as directed by the Safety Officer.', stopWorkCriteria: 'Any heat-illness symptom.' };
 const HZ_AIR: SafetyHazard = { hazardId: 'HZ-04', type: 'VISIBILITY', description: 'Haze reducing visibility for low-level aerial and drone observation over water.', severity: 'MEDIUM', appliesTo: ['SURVEILLANCE_AIR', 'SURVEILLANCE_DRONE'], from: null, to: null, mitigation: 'Aircraft operator visibility minima; drones kept within visual line of sight; Air Operations deconfliction.', stopWorkCriteria: 'Visibility below the operator minimum supplied for the platform, or loss of visual line of sight.' };
-const HZ_TRAFFIC: SafetyHazard = { hazardId: 'HZ-03', type: 'VESSEL TRAFFIC', description: 'Night departure of fishing fleet through nearshore sectors.', severity: 'HIGH', appliesTo: ['PROTECTION', 'CONTAINMENT', 'SURVEILLANCE_VESSEL'], from: T(19, '00:00'), to: T(19, '04:00'), mitigation: 'Navigation lights, radar watch, reduced speed; staged boom marked and lit (placeholder procedure).', stopWorkCriteria: 'Close-quarters situation or loss of radar watch.' };
 
 const R02 = (exposure: ThreatenedResource['exposure'], start: string, end: string): ThreatenedResource => ({ resourceId: 'R-02', name: 'Coastal water intake (WI-1)', type: 'CRITICAL INFRASTRUCTURE', sensitivity: 'CRITICAL', exposure, exposureWindow: { start, end }, confidence: 'MEDIUM', sectorId: 'C-2', shoreline: false, stakeholder: 'Intake operator (placeholder)', protection: { method: 'deflection boom', boomRequiredM: 400, leadTimeH: 6 } });
 const R01 = (exposure: ThreatenedResource['exposure'], start: string, end: string, confidence: ThreatenedResource['confidence']): ThreatenedResource => ({ resourceId: 'R-01', name: 'Mangrove habitat (sector M-2)', type: 'ECOLOGICAL', sensitivity: 'VERY HIGH', exposure, exposureWindow: { start, end }, confidence, sectorId: 'M-2', shoreline: true, stakeholder: null, protection: { method: 'creek-mouth exclusion boom', boomRequiredM: 600, leadTimeH: 4 } });
@@ -163,35 +162,5 @@ export const mockIap002: IapIncidentState = {
     { refId: 'A-SMP-OFFSHORE', kind: 'ASSIGNMENT', status: 'COMPLETED', reportedAt: T(18, '11:05'), note: 'S-01 to S-03 collected; custody to laboratory liaison' },
     { refId: 'A-INFO-WIND', kind: 'ASSIGNMENT', status: 'COMPLETED', reportedAt: T(18, '09:10'), note: 'met service feed restored' },
     { refId: 'A-EVID', kind: 'ASSIGNMENT', status: 'COMPLETED', reportedAt: T(18, '09:00'), note: 'imagery archived' },
-  ],
-};
-
-export const mockIap003: IapIncidentState = {
-  ...mockIap002,
-  operationalPeriod: { ...mockIap002.operationalPeriod, iapNumber: 3, status: 'REVIEWED', reviewedBy: 'Planning Section lead (placeholder)', createdAt: T(18, '17:30'), periodStart: T(18, '18:00'), periodEnd: T(19, '06:00'), sitrepRef: 'SIH-DEMO-2026-014-SR006 (demo)' },
-  currentSituation: { ...mockIap002.currentSituation, assessedAt: T(18, '17:15') },
-  slick: { ...mockIap002.slick!, observedAt: T(18, '17:05'), source: 'C-band SAR (demo)', sectorId: 'C-1', locationText: '≈22 km west of the Mumbai coastline', areaKm2: 24.1, fragmentCount: 6, detectionConfidence: 'MEDIUM-HIGH', trend: 'GROWING' },
-  environment: {
-    validAt: T(18, '17:00'), source: 'Operational met-ocean products (demo)', windSpeedMs: 9.0, windFromDeg: 255, currentSpeedMs: 0.45, currentTowardDeg: 68, waveHsM: 1.9, visibilityKm: 6, dataQuality: 'MEDIUM',
-    outlook: [
-      { from: T(18, '18:00'), to: T(19, '00:00'), windSpeedMs: 9, windFromDeg: 255, waveHsM: 1.9, visibilityKm: 6 },
-      { from: T(19, '00:00'), to: T(19, '03:00'), windSpeedMs: 11, windFromDeg: 260, waveHsM: 2.3, visibilityKm: 5 },
-      { from: T(19, '03:00'), to: T(19, '06:00'), windSpeedMs: 8, windFromDeg: 250, waveHsM: 1.8, visibilityKm: 8 },
-    ],
-  },
-  forecast: { ...mockIap002.forecast!, issuedAt: T(18, '17:20'), confidence: 'LOW-MEDIUM', horizons: [{ horizonH: 6, sectorId: 'C-2', uncertaintyKm: 3.5, confidence: 'MEDIUM' }, { horizonH: 12, sectorId: 'M-2', uncertaintyKm: 6.5, confidence: 'LOW-MEDIUM' }, { horizonH: 24, sectorId: null, uncertaintyKm: 11.0, confidence: 'LOW' }] },
-  impactAssessment: { assessedAt: T(18, '17:20'), source: 'GUARDIANS impact screening (demo)', resources: [R02('POSSIBLE', T(19, '00:00'), T(19, '07:00')), R01('LIKELY', T(19, '03:00'), T(19, '09:00'), 'MEDIUM'), R03('UNLIKELY', T(19, '02:00'), T(19, '08:00'))] },
-  availableAssets: assets('P3'),
-  safetyHazards: [HZ_SEA, HZ_TRAFFIC, HZ_AIR],
-  currentAlerts: [],
-  progress: [
-    { refId: 'OBJ-PROTECT-R03', kind: 'OBJECTIVE', status: 'CANCELLED', reportedAt: T(18, '17:25'), note: 'FLC-3 exposure reassessed UNLIKELY' },
-    { refId: 'A-SURV-AIR', kind: 'ASSIGNMENT', status: 'COMPLETED', reportedAt: T(18, '13:20'), note: 'leading edge confirmed in C-1' },
-    { refId: 'A-EVID', kind: 'ASSIGNMENT', status: 'COMPLETED', reportedAt: T(18, '14:20'), note: 'imagery archived' },
-    { refId: 'A-READY-R02', kind: 'ASSIGNMENT', status: 'IN PROGRESS', reportedAt: T(18, '17:00'), note: 'package remains staged' },
-    { refId: 'A-STAGE-R02', kind: 'ASSIGNMENT', status: 'COMPLETED', reportedAt: T(18, '10:50'), note: 'deflection boom staged at C-2' },
-    { refId: 'A-SENSOR-R02', kind: 'ASSIGNMENT', status: 'COMPLETED', reportedAt: T(18, '07:45'), note: 'sensor installed' },
-    { refId: 'A-NOTIFY-R02', kind: 'ASSIGNMENT', status: 'COMPLETED', reportedAt: T(18, '06:30'), note: 'operator advised' },
-    { refId: 'A-SMP-OFFSHORE', kind: 'ASSIGNMENT', status: 'COMPLETED', reportedAt: T(18, '11:05'), note: 'samples with laboratory' },
   ],
 };

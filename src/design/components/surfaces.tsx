@@ -229,38 +229,6 @@ export function Table<Row>({
   );
 }
 
-/* -------------------------------------------------------------------- Tabs */
-
-export function Tabs({
-  tabs,
-  value,
-  onChange,
-  label,
-}: {
-  tabs: readonly { value: string; label: string; count?: number }[];
-  value: string;
-  onChange: (value: string) => void;
-  label: string;
-}) {
-  return (
-    <div className="ds-tabs" role="tablist" aria-label={label}>
-      {tabs.map((tab) => (
-        <button
-          key={tab.value}
-          type="button"
-          role="tab"
-          aria-selected={tab.value === value}
-          className={tab.value === value ? 'is-active' : ''}
-          onClick={() => onChange(tab.value)}
-        >
-          {tab.label}
-          {tab.count !== undefined && <span className="ds-tabs-count num">{tab.count}</span>}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 /* ------------------------------------------------------------------ Notice */
 
 /**

@@ -47,7 +47,6 @@ const vessel = (id: string, vesselType: string, supportScore: number, keyReason:
 const V23_GAP = [{ from: T(16, '07:14'), to: T(16, '08:03') }];
 
 const R01 = (exposure: ImpactResource['exposure'], start: string, end: string): ImpactResource => ({ id: 'R-01', name: 'Mangrove habitat (sector M-2)', type: 'Ecological', sensitivity: 'VERY HIGH', exposure, exposureWindow: { start, end }, location: ll(35.9, 12.5) });
-const R02 = (exposure: ImpactResource['exposure'], start: string, end: string): ImpactResource => ({ id: 'R-02', name: 'Coastal water intake (WI-1)', type: 'Infrastructure', sensitivity: 'CRITICAL', exposure, exposureWindow: { start, end }, location: ll(34.3, 6.2) });
 const R03 = (exposure: ImpactResource['exposure'], start: string, end: string): ImpactResource => ({ id: 'R-03', name: 'Fish landing centre (FLC-3)', type: 'Socio-economic', sensitivity: 'HIGH', exposure, exposureWindow: { start, end }, location: ll(35.0, 1.5) });
 
 const horizon = (horizonH: number, x: number, y: number, directionDeg: number, uncertaintyKm: number, p: number, primaryConcern: string, confidence: ForecastHorizon['confidence']): ForecastHorizon => ({ horizonH, centre: ll(x, y), directionDeg, uncertaintyKm, shorelineContactProbability: p, primaryConcern, confidence });
@@ -139,47 +138,6 @@ export const mockSitrep002: SitrepIncidentState = {
       { id: 'SAR', label: 'SAR', source: 'DEMO-SAR-20260917-1105', ageHours: 0.9, quality: 'HIGH' },
       { id: 'WIND', label: 'Wind', source: 'Operational wind dataset', ageHours: 2, quality: 'MEDIUM' },
       { id: 'CURRENTS', label: 'Currents', source: 'Operational ocean-current dataset', ageHours: 5, quality: 'MEDIUM' },
-      { id: 'WAVES', label: 'Wave / Stokes', source: 'Operational wave dataset', ageHours: 5, quality: 'MEDIUM' },
-      { id: 'AIS', label: 'AIS', source: 'Historical AIS operational dataset', ageHours: 1, quality: 'MEDIUM' },
-    ],
-  },
-};
-
-export const mockSitrep003: SitrepIncidentState = {
-  ...mockSitrep002,
-  incident: { ...BASE_INCIDENT, sitrepNumber: 3, reportType: 'UPDATE', lifecycle: 'REVIEWED', reviewedBy: 'Duty analyst (placeholder)', generatedAt: T(17, '18:00'), reportingPeriodStart: T(17, '12:00'), reportingPeriodEnd: T(17, '18:00') },
-  observation: { ...mockSitrep002.observation, observationId: 'DEMO-S1-20260917-1718', platform: 'Sentinel-1-like SAR (demo)', observedAt: T(17, '17:18') },
-  slick: { centroid: ll(6.1, 2.6), outline: outline(6.1, 2.6, 21.4, 13.0, 64), reference: { place: 'the Mumbai coastline', distanceKm: 28, bearingDeg: 270 }, areaKm2: 21.4, lengthKm: 13.0, widthKm: 1.7, orientationDeg: 64, fragmentCount: 4, thicknessAvailable: false },
-  environment: { validAt: T(17, '17:00'), windSpeedMs: 7.4, windFromDeg: 262, currentSpeedMs: 0.42, currentTowardDeg: 240, waveHsM: 1.8, stokesDriftMs: 0.09, stokesTowardDeg: 252, dataQuality: 'MEDIUM', limitations: ['Environmental forcing resolution limits near-shore confidence.', 'Surface-current dataset not refreshed since 04:00 UTC.'] },
-  hindcast: { ...mockSitrep002.hindcast, corridorPolygon: corridor(6.1, 2.6, 8, 21, 248) },
-  vesselAssessment: {
-    ...mockSitrep002.vesselAssessment, aisCoveragePct: 86, vesselsScreened: 51,
-    candidates: [
-      vessel('Vessel-17', 'Product tanker', 84, 'Track intersects source corridor within release interval'),
-      vessel('Vessel-04', 'Cargo vessel', 64, 'Spatially compatible; timing inconsistent with revised hindcast'),
-      vessel('Vessel-23', 'Tanker', 62, 'Compatible timing; poor trajectory alignment', V23_GAP),
-      vessel('Vessel-31', 'Offshore supply vessel', 58, 'Late-window transit along corridor northern edge'),
-    ],
-  },
-  forecast: {
-    ...mockSitrep002.forecast, issuedAt: T(17, '17:30'),
-    horizons: [
-      horizon(6, 13.6, 5.7, 67, 2.3, 0, 'Nearshore fishing grounds', 'MEDIUM-HIGH'),
-      horizon(12, 21.4, 8.4, 70, 4.2, 0.12, 'Coastal water intake', 'MEDIUM'),
-      horizon(24, 34.0, 11.0, 80, 8.4, 0.58, 'Mangrove / shoreline', 'LOW-MEDIUM'),
-    ],
-  },
-  impacts: {
-    resources: [R01('LIKELY', T(18, '00:30'), T(18, '06:30')), R02('POSSIBLE', T(18, '04:00'), T(18, '10:00')), R03('POSSIBLE', T(18, '03:00'), T(18, '09:00'))],
-    shorelineImpactObserved: false,
-  },
-  confidence: { observation: 'MEDIUM-HIGH', environmental: 'LOW-MEDIUM', hindcast: 'MEDIUM', releaseTiming: 'LOW-MEDIUM', aisCoverage: 'MEDIUM', attribution: 'AMBIGUOUS', forecast6h: 'MEDIUM-HIGH', forecast24h: 'LOW-MEDIUM' },
-  provenance: {
-    modelConfiguration: 'guardians-transport-v1',
-    datasets: [
-      { id: 'SAR', label: 'SAR', source: 'DEMO-S1-20260917-1718', ageHours: 0.7, quality: 'HIGH' },
-      { id: 'WIND', label: 'Wind', source: 'Operational wind dataset', ageHours: 2, quality: 'MEDIUM' },
-      { id: 'CURRENTS', label: 'Currents', source: 'Operational ocean-current dataset', ageHours: 14, quality: 'LOW-MEDIUM' },
       { id: 'WAVES', label: 'Wave / Stokes', source: 'Operational wave dataset', ageHours: 5, quality: 'MEDIUM' },
       { id: 'AIS', label: 'AIS', source: 'Historical AIS operational dataset', ageHours: 1, quality: 'MEDIUM' },
     ],

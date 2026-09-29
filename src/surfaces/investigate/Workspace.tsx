@@ -18,7 +18,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { Bell, ChevronDown, Play, Database, Download, FlaskConical, House, LayoutGrid, Map as MapIcon, Pentagon, Plane, Satellite, Shield, Ship, Waves } from 'lucide-react';
+import { ChevronDown, Play, Database, Download, LayoutGrid, Map as MapIcon, Pentagon, Satellite, Ship } from 'lucide-react';
 import { SceneView } from './stages/Scene';
 import { PipelineRun } from './stages/PipelineRun';
 import { MapPage } from './stages/MapPage';
@@ -78,16 +78,6 @@ const FORECAST_PANELS = [
   { id: 'environment', label: 'Environment', icon: Database },
   { id: 'impact', label: 'Shoreline impact', icon: Pentagon },
   { id: 'vessels', label: 'Vessels', icon: Ship },
-] as const;
-
-const RESPONSE_PANELS = [
-  { id: 'overview', label: 'Overview', icon: House },
-  { id: 'containment', label: 'Containment', icon: Shield },
-  { id: 'assets', label: 'Assets', icon: Ship },
-  { id: 'surveillance', label: 'Surveillance', icon: Plane },
-  { id: 'cleanup', label: 'Cleanup', icon: Waves },
-  { id: 'sampling', label: 'Sampling', icon: FlaskConical },
-  { id: 'alerts', label: 'Alerts', icon: Bell },
 ] as const;
 
 /* Detection is three pages, switched from the head: the scene, the map around it, and how it was made. */
@@ -231,7 +221,6 @@ export function Workspace({ slickId }: { slickId: string }) {
    */
   const measuredAt = incident?.acquisitionTime ? Date.parse(incident.acquisitionTime) : undefined;
   const observedAt = measuredAt ?? Date.parse(p.observedAt);
-  const assigned = measuredAt === undefined && p.timeSource === 'ASSIGNED_DEMO';
   const inTab = STAGES.filter((item) => item.group === tabId);
   // Temporal forecast opens on the animated forward run, not the backtrack.
   const defaultStage = tabId === 'temporal' ? 'forecast' : tabId === 'response' ? 'response' : 'detection';

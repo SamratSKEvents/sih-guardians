@@ -10,7 +10,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Activity, AlertTriangle, ArrowRight, Check, CircleDot, Clock, Copy, Database, FileCheck2, FlaskConical, GitBranch, Hash, Layers,
+  Activity, AlertTriangle, Check, CircleDot, Clock, Copy, Database, FileCheck2, FlaskConical, GitBranch, Hash, Layers,
   ShieldCheck, Target, UserCheck, X,
 } from 'lucide-react';
 import { Badge, type Claim } from '../../../design/components';

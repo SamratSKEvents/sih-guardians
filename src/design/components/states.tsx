@@ -11,8 +11,6 @@
  * operator console it is the dangerous kind.
  */
 
-import type { ReactNode } from 'react';
-
 /* ---------------------------------------------------------------- Skeleton */
 
 /**
@@ -32,32 +30,6 @@ export function Skeleton({ rows = 3, head = false }: { rows?: number; head?: boo
           style={{ width: `${[88, 64, 76, 58, 81][index % 5]}%` }}
         />
       ))}
-    </div>
-  );
-}
-
-/** Wrap a loading region so screen readers are told, not just shown. */
-export function Loading({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div aria-busy="true" aria-label={label} role="status">
-      {children}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------- Empty */
-
-/**
- * The query ran and returned nothing. Always says what would make it
- * non-empty, because on a time-scrubbed map the usual cause is that the
- * timeline is parked before anything was observed.
- */
-export function Empty({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {
-  return (
-    <div className="ds-state">
-      <p className="ds-state-title">{title}</p>
-      {hint && <p className="ds-state-hint">{hint}</p>}
-      {action}
     </div>
   );
 }

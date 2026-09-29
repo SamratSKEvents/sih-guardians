@@ -9,14 +9,17 @@ import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import {
   AlertTriangle, ArrowLeft, BarChart3, Bell, Check, CheckCircle2, ChevronDown, ChevronRight, Clock, ClipboardList, Crosshair, FileText, FlaskConical, Gauge, Link2, MapPin,
-  Plane, Send, Shield, ShieldCheck, Ship, Target, Waves, Wind, Zap,
+  Plane, Send, Shield, ShieldCheck, Ship, Target, Waves, Zap,
 } from 'lucide-react';
 import { Badge } from '../../../design/components';
 import { when } from '../../../format';
 import type { Forcing } from '../../../forecast/forcing';
 import type { ResponsePanel } from '../Workspace';
-import { alongRoute, assetAt, assetStatus, EMPTY_STATE, isDeployed, type Asset, type Plan, type PlanState } from './responsePlan';
-import { kmBetween, type Pt } from './mapData';
+import { alongRoute, assetAt, assetStatus, EMPTY_STATE, isDeployed, type Plan, type PlanState } from './responsePlan';
+import type { Pt } from './mapData';
+
+/** "1 zone", "3 zones". */
+const many = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 import { card, hover } from './mapTip';
 
 const ll = ([lon, lat]: Pt): L.LatLngTuple => [lat, lon];
@@ -174,7 +177,7 @@ export function responseEvents(plan: Plan, state: PlanState) {
     if (a.arrive > 0 && a.arrive < 24 && (a.status0 === 'en route' || assigned) && a.kind !== 'boom' && a.kind !== 'tug') out.push({ h: a.arrive, label: `${a.name.split(' ').slice(-1)[0]} on scene`, detail: a.task, tone: 'predicted', quiet: true });
   }
   for (const m of plan.missions) out.push({ h: m.start, to: m.end, label: m.id, detail: m.name, tone: 'observed', quiet: m.id !== 'SURV-001' });
-  if (plan.sampAssigned) out.push({ h: plan.sampling.start, to: Math.min(24, plan.sampling.end), label: 'Sampling', detail: `${plan.stations.length} stations`, tone: 'predicted', quiet: true });
+  if (plan.sampAssigned) out.push({ h: plan.sampling.start, to: Math.min(24, plan.sampling.end), label: 'Sampling', detail: many(plan.stations.length, 'station'), tone: 'predicted', quiet: true });
   return out;
 }
 
@@ -228,15 +231,15 @@ function SectionNav({ plan, t, state, setPage, forcing, waveM }: PaneProps) {
     },
     surveillance: {
       status: flying.length ? 'In flight' : next ? 'Planned' : 'Complete',
-      lines: [flying.length ? `${flying.map((m) => m.id).join(', ')} flying` : `${plan.missions.length} missions`, next ? `Next ${next.id} at ${signed(next.start)}` : 'No flights queued'],
+      lines: [flying.length ? `${flying.map((m) => m.id).join(', ')} flying` : many(plan.missions.length, 'mission'), next ? `Next ${next.id} at ${signed(next.start)}` : 'No flights queued'],
     },
     cleanup: {
       status: plan.zones.some((z) => z.priority === 'Immediate' || z.priority === 'High') ? 'Planning' : 'Watch',
-      lines: [`${plan.zones.length} zones · ${f1(shoreKm)} km of shore`, `${plan.zones.filter((z) => z.priority !== 'Watch').length} priority areas`],
+      lines: [`${many(plan.zones.length, 'zone')} · ${f1(shoreKm)} km of shore`, `${plan.zones.filter((z) => z.priority !== 'Watch').length} priority areas`],
     },
     sampling: {
       status: !plan.sampAssigned ? 'Not assigned' : collected === plan.stations.length ? 'Complete' : collected ? 'In progress' : 'Planned',
-      lines: [`${plan.stations.length} stations`, `${collected} collected${plan.sampAssigned ? '' : ' · vessel not assigned'}`],
+      lines: [many(plan.stations.length, 'station'), `${collected} collected${plan.sampAssigned ? '' : ' · vessel not assigned'}`],
     },
     alerts: {
       status: high ? `${high} high` : alerts.length ? 'Medium' : 'Clear',
@@ -286,7 +289,7 @@ const counts = (plan: Plan, t: number, state: PlanState) => {
 const activeAlerts = (plan: Plan, state: PlanState) => plan.alerts.filter((a) => !a.resolvedByDefault && !state.resolved.includes(a.id));
 
 function OverviewPane(p: PaneProps) {
-  const { plan, t, state, setPage, firstShore, forcing, waveM } = p;
+  const { plan, t, state, setPage, firstShore } = p;
   const c = counts(plan, t, state);
   const alerts = activeAlerts(plan, state);
   const shoreKm = plan.zones.reduce((s, z) => s + z.km, 0);
@@ -297,14 +300,14 @@ function OverviewPane(p: PaneProps) {
           <h2>Response overview</h2>
           <p>Active response. {plan.booms.filter((b) => isDeployed(b, state)).length} boom lines deployed; {firstShore !== undefined ? `oil reaches the coast at +${firstShore} h` : 'no shore contact forecast within 24 h'}. Plan state at {signed(t)}.</p>
         </div>
-        <Badge status={alerts.some((a) => a.severity === 'High') ? 'warning' : 'clear'}>{alerts.length} alerts</Badge>
+        <Badge status={alerts.some((a) => a.severity === 'High') ? 'warning' : 'clear'}>{many(alerts.length, 'alert')}</Badge>
       </section>
       <SectionNav {...p} />
       <section className="dm-tiles">
         <Tile label="Response window" value={f1(plan.windowH)} unit="h" note="to deploy containment" tone={plan.windowH <= 12 ? 'critical' : 'warning'} />
         <Tile label="Assets on scene" value={String(c.scene)} note={`of ${c.total} · ${c.route} en route`} tone="clear" />
-        <Tile label="Boom in use" value={f1(plan.booms.filter((b) => isDeployed(b, state)).reduce((x, b) => x + b.lengthKm, 0))} unit="km" note={`${plan.booms.filter((b) => isDeployed(b, state)).length} lines`} />
-        <Tile label="Shoreline to clean" value={f1(shoreKm)} unit="km" note={`${plan.zones.length} zones`} tone={shoreKm ? 'warning' : undefined} />
+        <Tile label="Boom in use" value={f1(plan.booms.filter((b) => isDeployed(b, state)).reduce((x, b) => x + b.lengthKm, 0))} unit="km" note={many(plan.booms.filter((b) => isDeployed(b, state)).length, 'line')} />
+        <Tile label="Shoreline to clean" value={f1(shoreKm)} unit="km" note={many(plan.zones.length, 'zone')} tone={shoreKm ? 'warning' : undefined} />
       </section>
       <Card icon={Bell} title={`Active alerts (${alerts.length})`} onClick={() => setPage('alerts')}>
         <ul className="rs-list">{alerts.slice(0, 3).map((a) => <li key={a.id}><i className={`rs-dot is-${a.severity.toLowerCase()}`} /><span>{a.title}<small>{a.area}</small></span><small className="num">{signed(a.at)}</small></li>)}</ul>
@@ -524,7 +527,7 @@ function SamplingPane({ plan, t, t0, setState }: PaneProps) {
     <>
       <section className="dm-card dm-hero"><div><h2>Sampling plan</h2><p>Targeted sampling to confirm impact, monitor spread and inform decisions. Stations are placed from the forecast and visited in the shortest order.</p></div><Badge claim="predicted">Plan</Badge></section>
       <Card icon={Target} title="Sampling objectives"><ul className="rs-checks">{['Confirm slick boundary and extent', 'Hydrocarbon concentration in water', 'Monitor nearshore sensitive areas', 'Establish background conditions', 'Fingerprint oil against suspect vessels'].map((x) => <li key={x}><Check size={13} />{x}</li>)}</ul></Card>
-      <Card icon={MapPin} title="Planned stations" meta={<span className="dm-meta">{plan.stations.length} stations</span>}>
+      <Card icon={MapPin} title="Planned stations" meta={<span className="dm-meta">{many(plan.stations.length, 'station')}</span>}>
         <ul className="rs-list">{plan.stations.map((s) => <li key={s.id}><i className={`rs-dot ${s.id === 'B-1' ? 'is-blue' : s.priority === 'High' ? 'is-high' : 'is-medium'}`} /><span>{s.id} · {s.role}<small>{s.why}</small></span><small className="num">{plan.sampAssigned ? signed(s.arrive) : '—'}</small><Pill v={t >= s.arrive ? 'Collected' : 'Planned'} /></li>)}</ul>
         {!plan.sampAssigned && <div className="rs-btns"><button type="button" className="is-primary" onClick={() => setState((x) => ({ ...x, assigned: { ...x.assigned, 'samp-1': Date.now() } }))}><Send size={14} />Assign sampling vessel</button></div>}
       </Card>

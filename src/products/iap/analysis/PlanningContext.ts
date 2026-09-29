@@ -10,9 +10,6 @@ import { addMin, fmt, ms, overlaps, utc } from '../utils/format';
 
 export type TransitMode = 'vessel' | 'air' | 'road';
 
-export const modeOf = (a: ResponseAsset): TransitMode | null =>
-  a.kind === 'RESPONSE VESSEL' || a.kind === 'PATROL VESSEL' ? 'vessel' : a.kind === 'AIRCRAFT' ? 'air' : a.kind === 'COMMAND' || a.kind === 'BOOM' || a.kind === 'SKIMMER' ? null : 'road';
-
 /** Interval for which an assignment commits `assetId` (held assets until commitUntil), or null when not scheduled. */
 export function intervalFor(a: Pick<Assignment, 'startTime' | 'targetCompletion' | 'commitUntil' | 'heldAssetIds'>, assetId: string): [string, string] | null {
   if (!a.startTime || !a.targetCompletion) return null;

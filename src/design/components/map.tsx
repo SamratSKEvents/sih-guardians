@@ -11,58 +11,6 @@
 import { ChevronDown, Layers } from 'lucide-react';
 import { useId, useState, type ReactNode } from 'react';
 
-/* --------------------------------------------------------------- HealthRow */
-
-export type HealthState = 'ok' | 'degraded' | 'down';
-
-export interface HealthItem {
-  id: string;
-  /** Four or five characters. This row is scanned, not read. */
-  label: string;
-  state: HealthState;
-  icon?: ReactNode;
-  /** Why it is degraded. Shown on hover and to screen readers. */
-  detail?: string;
-}
-
-/**
- * The state of every input the answers depend on, in one glance.
- *
- * The whole value is that a healthy row is monochrome, so the one degraded
- * item is the only coloured thing in it. A row that colours all six green
- * makes the amber one just another colour and defeats the point.
- *
- * `note` spells out the consequence rather than the fault: an operator does
- * not need to know a model is down, they need to know which claims on screen
- * are now unverified.
- */
-export function HealthRow({ items, note }: { items: readonly HealthItem[]; note?: string }) {
-  const bad = items.filter((item) => item.state !== 'ok');
-  return (
-    <div className="ds-health">
-      <ul>
-        {items.map((item) => (
-          <li key={item.id} data-state={item.state} title={item.detail}>
-            <span className="ds-health-icon" aria-hidden="true">
-              {item.icon ?? <span className="ds-health-dot" />}
-            </span>
-            <span className="ds-health-label">{item.label}</span>
-            <span className="visually-hidden">
-              {item.state === 'ok' ? 'healthy' : item.state}
-              {item.detail ? `. ${item.detail}` : ''}
-            </span>
-          </li>
-        ))}
-      </ul>
-      {note && (
-        <p className="ds-health-note" role={bad.length ? 'status' : undefined}>
-          {note}
-        </p>
-      )}
-    </div>
-  );
-}
-
 /* ------------------------------------------------------------ MapStatusBar */
 
 /**

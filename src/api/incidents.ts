@@ -18,14 +18,11 @@ import type {
   Candidates,
   Detection,
   Environment,
-  Events,
-  Forecast,
   Incident,
   Posthoc,
   Provenance,
   SourceHypotheses,
   Stated,
-  T0Footprint,
 } from '../incidents/types';
 import type { SlickFeature } from './slicks';
 
@@ -80,13 +77,8 @@ export const fetchCandidates = (id: string) =>
 
 export const fetchAis = (id: string) => loadArtifact<Ais>(id, 'ais.json', 'NO_AIS_ARTIFACT');
 
-export const fetchForecast = (id: string) =>
-  loadArtifact<Forecast>(id, 'forecast.json', 'NO_FORECAST_ARTIFACT');
-
 export const fetchEnvironment = (id: string) =>
   loadArtifact<Environment>(id, 'environment.json', 'NO_ENVIRONMENTAL_ARTIFACT');
-
-export const fetchEvents = (id: string) => loadArtifact<Events>(id, 'events.json', 'NO_EVENT_ARTIFACT');
 
 export const fetchProvenance = (id: string) =>
   loadArtifact<Provenance>(id, 'provenance.json', 'NO_PROVENANCE_ARTIFACT');
@@ -94,10 +86,3 @@ export const fetchProvenance = (id: string) =>
 export const fetchPosthoc = (id: string) =>
   loadArtifact<Posthoc>(id, 'posthoc.json', 'NO_POSTHOC_ARTIFACT');
 
-/** The reconstructed T0 footprint. Plain 404 when none was reconstructed. */
-export async function fetchT0Footprint(incidentId: string): Promise<T0Footprint | undefined> {
-  const response = await fetch(`${base(incidentId)}/t0-footprint.json`);
-  if (response.status === 404) return undefined;
-  if (!response.ok) throw new Error(`t0-footprint.json: HTTP ${response.status}`);
-  return response.json() as Promise<T0Footprint>;
-}

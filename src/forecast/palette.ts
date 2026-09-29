@@ -60,11 +60,3 @@ export const CODE_RGBA: Uint8Array = (() => {
   return table;
 })();
 
-/** The legend, in the order the bands stack. */
-export const BONN_LEGEND: { label: string; range: string; css: string }[] = [
-  { label: 'Sheen', range: '0.04–0.3 µm', css: 'rgb(170 186 200)' },
-  { label: 'Rainbow', range: '0.3–5 µm', css: 'rgb(122 150 196)' },
-  { label: 'Metallic', range: '5–50 µm', css: 'rgb(150 140 160)' },
-  { label: 'True colour, discontinuous', range: '50–200 µm', css: 'rgb(150 106 66)' },
-  { label: 'True colour, continuous', range: '> 200 µm', css: 'rgb(92 58 33)' },
-];
